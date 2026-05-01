@@ -1,8 +1,0 @@
-{
-  "name": "michail-barber-functions",
-  "version": "1.0.0",
-  "description": "Netlify Functions for Michail Barber",
-  "dependencies": {
-    "@neondatabase/serverless": "^0.9.0"
-  }
-}
