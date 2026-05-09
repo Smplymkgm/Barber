@@ -20,6 +20,10 @@ exports.handler = async function(event) {
 
   const sql = neon(process.env.NETLIFY_DATABASE_URL);
 
+  // Self-healing migrations — no-op once columns exist
+  await sql`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS order_id TEXT`;
+  await sql`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS auto_completed BOOLEAN DEFAULT FALSE`;
+
   try {
     // ── GET ──
     if (event.httpMethod === 'GET') {
