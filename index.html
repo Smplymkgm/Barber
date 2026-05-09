@@ -1650,7 +1650,8 @@ function openModal(id){
   // Close on outside click
   el.onclick = function(e){ if(e.target === el) closeModal(id); };
 }
-function closeModal(id){ const m=document.getElementById(id); if(m){ m.classList.remove('open'); m.style.display=''; } }
+function closeModal(id){ var m=document.getElementById(id); if(m){ m.classList.remove('open'); m.style.display=''; } }
+function showModal(id){ var m=document.getElementById(id); if(!m){ console.warn('showModal: element not found:',id); return; } m.style.display='flex'; m.classList.add('open'); m.onclick=function(e){ if(e.target===m) closeModal(id); }; }
 function openPanel(){ document.getElementById('sidePanel').classList.add('open'); }
 function closePanel(){ document.getElementById('sidePanel').classList.remove('open'); }
 
@@ -2740,101 +2741,95 @@ async function submitBookingAnimated(){
   btn.querySelector('.submit-text').style.display='none';
   btn.querySelector('.submit-dots').style.display='flex';
 
+  // ── Try ONLY the DB save — UI code must not be inside this catch ──
+  let savedOk = false;
   try {
-    // ── Real fetch to DB ──
     const ok = await API.saveBooking(b);
-    if(!ok) console.warn('Booking saved to localStorage fallback (DB unreachable), id='+b.id);
-
-    // Push to in-memory cache
-    allBookings.push(b);
-    curBookingData = b;
-
-    // ── Show success state ──
-    const dotsEl  = btn.querySelector('.submit-dots');
-    const checkEl = btn.querySelector('.submit-check');
-    const textEl  = btn.querySelector('.submit-text');
-    if(dotsEl)  dotsEl.style.display='none';
-    if(checkEl){ checkEl.style.display='block'; checkEl.textContent='✓'; }
-    if(textEl)  textEl.style.display='block';
-    btn.classList.remove('loading');
-    btn.classList.add('success');
-
-    // ── Branch by payment method (read from saved booking, not mutable selPay) ──
-    const payMethod = b.payment;
-    const snapDate  = b.date;
-    const snapTime  = b.time;
-    const snapGroup = b.groupSize || 1;
-    const snapSvc   = svc.name;
-    const snapPrice = fmtP(b.price);
-    const snapName  = b.name;
-
-    function _openModal(id){
-      const m = document.getElementById(id);
-      if(!m) return;
-      m.classList.add('open');
-      m.style.display = 'flex';
-      m.onclick = function(e){ if(e.target===m){ m.classList.remove('open'); m.style.display=''; } };
-    }
-
-    if(payMethod==='cash'){
-      if(textEl) textEl.textContent=currentLang==='es'?'Confirmado':'Confirmed';
-      showToast(currentLang==='es'?'✓ Cita confirmada — pagas en efectivo al momento del servicio':'✓ Booking confirmed — pay cash at appointment','success',4500);
-      launchConfetti();
-      const cb=document.getElementById('confirmBody');
-      if(cb) cb.textContent=`${snapName}\n${snapSvc}${snapGroup>1?' × '+snapGroup:''}\n${snapDate} at ${snapTime}\n${fullAddr}\nPayment: CASH (pay at appointment)\nTotal: ${snapPrice}\n\nBooking confirmed! You'll hear from us on WhatsApp shortly.`;
-      const bs=document.getElementById('boldPaySection'); if(bs) bs.style.display='none';
-      _openModal('confirmModal');
-
-    } else if(payMethod==='transfer'){
-      if(textEl) textEl.textContent=currentLang==='es'?'Enviado':'Sent';
-      showToast(currentLang==='es'?'✓ Solicitud enviada — transfiere para confirmar':'✓ Request sent — transfer to confirm booking','success',5000);
-      const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
-      set('tmBankName', BANK_NAME);
-      set('tmAccount',  BANK_ACCOUNT);
-      set('tmType',     BANK_TYPE);
-      set('tmHolder',   BANK_HOLDER);
-      set('tmNequi',    BANK_NEQUI);
-      set('transferBookingInfo', `${snapName} · ${snapSvc}${snapGroup>1?' × '+snapGroup:''} · ${snapDate} at ${snapTime} · ${snapPrice}`);
-      _openModal('transferModal');
-
-    } else if(payMethod==='card'||payMethod==='link'){
-      if(textEl) textEl.textContent=currentLang==='es'?'Pagando...':'Paying...';
-      showToast(currentLang==='es'?'Abriendo pago con Bold...':'Opening Bold checkout...','success',3000);
-      setTimeout(()=>{ payWithBold(b.id, b.price, b.serviceName||b.service); }, 500);
-
-    } else if(payMethod==='paypal'){
-      if(textEl) textEl.textContent=currentLang==='es'?'Enviado':'Sent';
-      showToast(currentLang==='es'?'✓ Solicitud enviada — completa el pago por PayPal':'✓ Request sent — complete PayPal payment','success',5000);
-      const pi=document.getElementById('paypalBookingInfo');
-      if(pi) pi.textContent=`${snapName} · ${snapSvc}${snapGroup>1?' × '+snapGroup:''} · ${snapDate} at ${snapTime} · ${snapPrice}`;
-      const pl=document.getElementById('paypalPayLink');
-      if(pl) pl.href=PAYPAL_LINK+'/'+(b.price/1000).toFixed(0)+'COP';
-      _openModal('paypalModal');
-    }
-
-    // ── Reset form state ──
-    selDate=null; selTime=null; selGroup=1; selPay=null;
-    window._activeCoupon=null; window._couponDiscount=0; window._couponFinalPrice=null;
-    renderCal();
-    document.getElementById('timeSlotsWrap').style.display='none';
-    document.getElementById('pricePreview').classList.remove('show');
-    document.querySelectorAll('.grp-btn').forEach((gb,i)=>gb.classList.toggle('selected',i===0));
-    document.querySelectorAll('.pay-option').forEach(o=>o.classList.remove('selected'));
-
-    setTimeout(()=>{
-      btn.classList.remove('success');
-      btn.querySelector('.submit-check').style.display='none';
-      btn.querySelector('.submit-arrow').style.display='block';
-      btn.querySelector('.submit-text').textContent=currentLang==='es'?'SOLICITAR CITA':'REQUEST APPOINTMENT';
-    },3000);
-
+    if(!ok) console.warn('Booking saved to localStorage fallback, id='+b.id);
+    savedOk = true;
   } catch(err) {
-    console.error('Booking submit error:', err);
+    console.error('Booking save error:', err);
     btn.classList.remove('loading');
     btn.querySelector('.submit-dots').style.display='none';
     btn.querySelector('.submit-arrow').style.display='block';
     btn.querySelector('.submit-text').style.display='block';
     showToast('Error al guardar la cita. Intenta de nuevo.','error',4000);
+    return;
+  }
+
+  // ── Save succeeded — all UI code runs outside try/catch ──
+  allBookings.push(b);
+  curBookingData = b;
+
+  btn.querySelector('.submit-dots').style.display='none';
+  btn.querySelector('.submit-check').style.display='block';
+  btn.querySelector('.submit-check').textContent='✓';
+  btn.querySelector('.submit-text').style.display='block';
+  btn.classList.remove('loading');
+  btn.classList.add('success');
+
+  // Reset form
+  selDate=null; selTime=null; selGroup=1; selPay=null; window.selectedPay=null;
+  window._activeCoupon=null; window._couponDiscount=0; window._couponFinalPrice=null;
+  renderCal();
+  document.getElementById('timeSlotsWrap').style.display='none';
+  document.getElementById('pricePreview').classList.remove('show');
+  document.querySelectorAll('.grp-btn').forEach(function(gb,i){gb.classList.toggle('selected',i===0);});
+  document.querySelectorAll('.pay-option').forEach(function(o){o.classList.remove('selected');});
+  setTimeout(function(){
+    btn.classList.remove('success');
+    btn.querySelector('.submit-check').style.display='none';
+    btn.querySelector('.submit-arrow').style.display='block';
+    btn.querySelector('.submit-text').textContent=currentLang==='es'?'SOLICITAR CITA':'REQUEST APPOINTMENT';
+  }, 3000);
+
+  // ── Open payment modal based on method ──
+  var payMethod = b.payment;
+  var snapDate  = b.date;
+  var snapTime  = b.time;
+  var snapGroup = b.groupSize || 1;
+  var snapSvc   = b.serviceName || svc.name;
+  var snapPrice = fmtP(b.price);
+  var snapName  = b.name;
+  var grpSuffix = snapGroup > 1 ? ' × ' + snapGroup : '';
+
+  console.log('[booking] payment method:', payMethod);
+
+  if(payMethod === 'cash'){
+    btn.querySelector('.submit-text').textContent = currentLang==='es' ? 'Confirmado' : 'Confirmed';
+    showToast(currentLang==='es' ? '✓ Cita confirmada — pagas en efectivo al momento del servicio' : '✓ Booking confirmed — pay cash at appointment', 'success', 4500);
+    launchConfetti();
+    var cb = document.getElementById('confirmBody');
+    if(cb) cb.textContent = snapName+'\n'+snapSvc+grpSuffix+'\n'+snapDate+' at '+snapTime+'\n'+fullAddr+'\nPayment: CASH (pay at appointment)\nTotal: '+snapPrice+'\n\nBooking confirmed! You\'ll hear from us on WhatsApp shortly.';
+    var bs = document.getElementById('boldPaySection');
+    if(bs) bs.style.display = 'none';
+    showModal('confirmModal');
+
+  } else if(payMethod === 'transfer'){
+    btn.querySelector('.submit-text').textContent = currentLang==='es' ? 'Enviado' : 'Sent';
+    showToast(currentLang==='es' ? '✓ Solicitud enviada — transfiere para confirmar' : '✓ Request sent — transfer to confirm booking', 'success', 5000);
+    var tid = document.getElementById('transferBookingInfo');
+    if(tid) tid.textContent = snapName+' · '+snapSvc+grpSuffix+' · '+snapDate+' at '+snapTime+' · '+snapPrice;
+    var tmb = document.getElementById('tmBankName');   if(tmb) tmb.textContent = BANK_NAME;
+    var tma = document.getElementById('tmAccount');    if(tma) tma.textContent = BANK_ACCOUNT;
+    var tmt = document.getElementById('tmType');       if(tmt) tmt.textContent = BANK_TYPE;
+    var tmh = document.getElementById('tmHolder');     if(tmh) tmh.textContent = BANK_HOLDER;
+    var tmn = document.getElementById('tmNequi');      if(tmn) tmn.textContent = BANK_NEQUI;
+    showModal('transferModal');
+
+  } else if(payMethod === 'card' || payMethod === 'link'){
+    btn.querySelector('.submit-text').textContent = currentLang==='es' ? 'Pagando...' : 'Paying...';
+    showToast(currentLang==='es' ? 'Abriendo pago con Bold...' : 'Opening Bold checkout...', 'success', 3000);
+    setTimeout(function(){ payWithBold(b.id, b.price, b.serviceName||b.service); }, 500);
+
+  } else if(payMethod === 'paypal'){
+    btn.querySelector('.submit-text').textContent = currentLang==='es' ? 'Enviado' : 'Sent';
+    showToast(currentLang==='es' ? '✓ Solicitud enviada — completa el pago por PayPal' : '✓ Request sent — complete PayPal payment', 'success', 5000);
+    var pi = document.getElementById('paypalBookingInfo');
+    if(pi) pi.textContent = snapName+' · '+snapSvc+grpSuffix+' · '+snapDate+' at '+snapTime+' · '+snapPrice;
+    var pl = document.getElementById('paypalPayLink');
+    if(pl) pl.href = PAYPAL_LINK + '/' + (b.price/1000).toFixed(0) + 'COP';
+    showModal('paypalModal');
   }
 }
 
