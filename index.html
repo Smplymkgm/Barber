@@ -798,6 +798,7 @@ nav.scrolled .nav-signin-btn.admin-active{
 .field-error{font-family:'Space Mono',monospace;font-size:9px;color:var(--red);letter-spacing:0.08em;margin-top:4px;display:none;}
 .field-error.show{display:block;}
 .phone-wrap.error{border:1.5px solid var(--red);}
+#calGrid.error,#timeSlots.error,#paymentGrid.error{outline:2px solid var(--red);border-radius:2px;}
 
 
 /* ── TOAST NOTIFICATION ── */
@@ -1459,7 +1460,13 @@ function refreshBanner(){ document.getElementById('calBanner').classList.toggle(
 function initCal(){ const n=new Date(); calYear=n.getFullYear(); calMonth=n.getMonth(); renderCal(); }
 function renderCal(){
   const grid=document.getElementById('calGrid');
-  if(isCalClosed()){ grid.innerHTML='<p style="font-family:\'Space Mono\',monospace;font-size:11px;color:var(--red);padding:16px;text-align:center;letter-spacing:0.1em;">CALENDAR CLOSED</p>'; return; }
+  if(isCalClosed()){
+    if(!currentUser?.isAdmin){
+      grid.innerHTML='<p style="font-family:\'Space Mono\',monospace;font-size:11px;color:var(--red);padding:16px;text-align:center;letter-spacing:0.1em;">CALENDAR CLOSED</p>';
+      return;
+    }
+    // Admin: fall through and render calendar, banner added below
+  }
   const fd=new Date(calYear,calMonth,1).getDay();
   const dm=new Date(calYear,calMonth+1,0).getDate();
   const today=new Date(); today.setHours(0,0,0,0);
@@ -1483,7 +1490,16 @@ function renderCal(){
     else if(dobj.getTime()===today.getTime()) cls+=' today';
     h+=`<div class="${cls}"${!isPast&&!isFull?` onclick="selectDate('${ds}')"`:''}>${d}</div>`;
   }
-  h+=`</div>`; grid.innerHTML=h;
+  h+=`</div>`;
+  if(isCalClosed()) h='<div style="background:var(--red);color:#fff;padding:7px 14px;font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:0.1em;display:flex;justify-content:space-between;align-items:center;">CALENDAR CLOSED (admin view)<button type="button" onclick="adminOpenCalendar()" style="background:#fff;color:var(--red);border:none;font-family:\'Space Mono\',monospace;font-size:9px;padding:3px 8px;cursor:pointer;letter-spacing:0.08em;">OPEN →</button></div>'+h;
+  grid.innerHTML=h;
+}
+function adminOpenCalendar(){
+  DB.set('calClosed',false);
+  API.saveSetting('calendar_open','true').catch(console.error);
+  refreshBanner();
+  renderCal();
+  showToast('✓ Calendar opened for all users','success',2500);
 }
 function changeMonth(dir){ calMonth+=dir; if(calMonth>11){calMonth=0;calYear++;} if(calMonth<0){calMonth=11;calYear--;} selDate=null;selTime=null; document.getElementById('timeSlotsWrap').style.display='none'; document.getElementById('pricePreview').classList.remove('show'); renderCal(); }
 function selectDate(ds){
@@ -1555,7 +1571,7 @@ function updatePricePreview(){
 
 // ─── GROUP / PAYMENT ───
 function selectGroup(n,el){ selGroup=n; document.querySelectorAll('.grp-btn').forEach(b=>b.classList.remove('selected')); el.classList.add('selected'); updatePricePreview(); if(selDate) renderTimeSlots(selDate); }
-function selectPay(m,el){ selPay=m; document.querySelectorAll('.pay-option').forEach(o=>o.classList.remove('selected')); el.classList.add('selected'); }
+function selectPay(m,el){ selPay=m; window.selectedPay=m; document.querySelectorAll('.pay-option').forEach(o=>o.classList.remove('selected')); el.classList.add('selected'); }
 
 // ─── COVERAGE ───
 function distToSurcharge(d){ if(d<=30)return 0; if(d<=40)return 10; if(d<=50)return 20; if(d<=60)return 40; if(d<=70)return 60; if(d<=80)return 80; if(d<=90)return 100; if(d<=100)return 150; return null; }
@@ -2476,6 +2492,7 @@ async function submitBookingAnimated(){
   if(!addr)     { showFieldError('bookAddr',   currentLang==='es'?'Ingresa tu dirección':'Required'); missing.push(currentLang==='es'?'Dirección':'Address'); }
   if(!selDate)  { showFieldError('calGrid',    currentLang==='es'?'Selecciona una fecha':'Select a date'); missing.push(currentLang==='es'?'Fecha':'Date'); }
   if(!selTime)  { showFieldError('timeSlots',  currentLang==='es'?'Selecciona una hora':'Select a time'); missing.push(currentLang==='es'?'Hora':'Time'); }
+  selPay = selPay || window.selectedPay || null;
   if(!selPay)   { showFieldError('paymentGrid',currentLang==='es'?'Selecciona método de pago':'Select payment'); missing.push(currentLang==='es'?'Método de pago':'Payment method'); }
 
   if(missing.length){
