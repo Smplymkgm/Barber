@@ -1017,11 +1017,11 @@ nav.scrolled .nav-signin-btn.admin-active{
   <div class="form-group">
     <label class="form-label" data-en="Group Size" data-es="Personas">Group Size</label>
     <div class="group-sel">
-      <button class="grp-btn selected" onclick="selectGroup(1,this)">1</button>
-      <button class="grp-btn" onclick="selectGroup(2,this)">2</button>
-      <button class="grp-btn" onclick="selectGroup(3,this)">3</button>
-      <button class="grp-btn" onclick="selectGroup(4,this)">4</button>
-      <button class="grp-btn" onclick="selectGroup(5,this)">5+</button>
+      <button type="button" class="grp-btn selected" onclick="selectGroup(1,this)">1</button>
+      <button type="button" class="grp-btn" onclick="selectGroup(2,this)">2</button>
+      <button type="button" class="grp-btn" onclick="selectGroup(3,this)">3</button>
+      <button type="button" class="grp-btn" onclick="selectGroup(4,this)">4</button>
+      <button type="button" class="grp-btn" onclick="selectGroup(5,this)">5+</button>
     </div>
   </div>
   <div class="form-group"><label class="form-label" data-en="Your Address" data-es="Tu Dirección">Your Address</label><input type="text" class="form-input" id="bookAddr" placeholder="Cra 35 #8A-20, El Poblado..."></div>
@@ -1327,7 +1327,7 @@ const DB = {
 };
 
 // ─── IN-MEMORY BOOKING CACHE (source of truth after DB load) ───
-let allBookings = DB.get('bookings', []); // seed from localStorage until DB responds
+let allBookings = []; // populated from DB on load — do NOT seed from localStorage (stale data blocks calendar)
 
 function getServices(){ return DB.get('services', DEFAULT_SERVICES); }
 function getZones(){ return DB.get('zones', DEFAULT_ZONES); }
@@ -2455,83 +2455,131 @@ function closeEventPopup(){
 
 
 // ─── ANIMATED SUBMIT ───
-function submitBookingAnimated(){
+async function submitBookingAnimated(){
   const btn = document.getElementById('submitBtn');
   if(!btn || btn.classList.contains('loading')) return;
 
-  // Validate with inline errors
+  // ── Validate ──
   clearFieldErrors();
   const firstName = document.getElementById('firstName').value.trim();
-  const email = document.getElementById('bookEmail').value.trim();
-  const phone = document.getElementById('bookPhone')?.value?.trim()||'';
-  const addr = document.getElementById('bookAddr').value.trim();
-  const apt = document.getElementById('bookApt')?.value?.trim()||'';
-  const fullAddr = apt ? addr + ', ' + apt : addr;
-  // Save address for next time
-  if(currentUser && addr) saveUserAddress(currentUser.email, {addr:addr, apt:apt});
-  let valid = true;
-  if(!firstName){ showFieldError('firstName', currentLang==='es'?'Campo obligatorio':'Required field'); valid=false; }
-  if(!email){ showFieldError('bookEmail', currentLang==='es'?'Campo obligatorio':'Required field'); valid=false; }
-  if(!phone){ showFieldError('bookPhone', currentLang==='es'?'Campo obligatorio':'Required field'); valid=false; }
-  if(!addr){ showFieldError('bookAddr', currentLang==='es'?'Ingresa tu dirección':'Enter your address'); valid=false; }
-  if(!selDate){ showFieldError('calGrid', currentLang==='es'?'Selecciona una fecha':'Select a date'); valid=false; }
-  if(!selTime){ showFieldError('timeSlots', currentLang==='es'?'Selecciona una hora':'Select a time'); valid=false; }
-  if(!selPay){ showFieldError('paymentGrid', currentLang==='es'?'Selecciona método de pago':'Select payment method'); valid=false; }
-  if(!valid) return;
+  const lastName  = document.getElementById('lastName')?.value?.trim()||'';
+  const email     = document.getElementById('bookEmail').value.trim();
+  const phone     = document.getElementById('bookPhone')?.value?.trim()||'';
+  const addr      = document.getElementById('bookAddr').value.trim();
+  const apt       = document.getElementById('bookApt')?.value?.trim()||'';
+  const fullAddr  = apt ? addr+', '+apt : addr;
 
-  // Show address confirmation if user is logged in and has saved address
-  const savedAddr = getSavedAddress();
-  const currentAddr = document.getElementById('bookAddr')?.value?.trim();
-  if(currentUser && savedAddr && currentAddr === savedAddr.addr){
-    showAddressConfirm(function(){
-      _doSubmitAnimation(btn);
-    });
+  const missing = [];
+  if(!firstName){ showFieldError('firstName', currentLang==='es'?'Campo obligatorio':'Required'); missing.push(currentLang==='es'?'Nombre':'First name'); }
+  if(!email)    { showFieldError('bookEmail',  currentLang==='es'?'Campo obligatorio':'Required'); missing.push('Email'); }
+  if(!phone)    { showFieldError('bookPhone',  currentLang==='es'?'Campo obligatorio':'Required'); missing.push(currentLang==='es'?'Teléfono':'Phone'); }
+  if(!addr)     { showFieldError('bookAddr',   currentLang==='es'?'Ingresa tu dirección':'Required'); missing.push(currentLang==='es'?'Dirección':'Address'); }
+  if(!selDate)  { showFieldError('calGrid',    currentLang==='es'?'Selecciona una fecha':'Select a date'); missing.push(currentLang==='es'?'Fecha':'Date'); }
+  if(!selTime)  { showFieldError('timeSlots',  currentLang==='es'?'Selecciona una hora':'Select a time'); missing.push(currentLang==='es'?'Hora':'Time'); }
+  if(!selPay)   { showFieldError('paymentGrid',currentLang==='es'?'Selecciona método de pago':'Select payment'); missing.push(currentLang==='es'?'Método de pago':'Payment method'); }
+
+  if(missing.length){
+    showToast((currentLang==='es'?'Falta: ':'Missing: ')+missing.join(', '), 'error', 5000);
     return;
   }
 
   // Save address for next time
-  if(currentUser && currentAddr){
-    const apt = document.getElementById('bookApt')?.value?.trim()||'';
-    saveUserAddress(currentUser.email, {addr:currentAddr, apt:apt});
+  if(currentUser && addr) saveUserAddress(currentUser.email, {addr, apt});
+
+  // ── Build booking object ──
+  const svcId = document.getElementById('serviceSelect').value;
+  const rc    = document.getElementById('refCode')?.value?.trim()?.toUpperCase()||'';
+  const svc   = getServices().find(s=>s.id===svcId) || getServices()[0];
+  const sc    = getSurcharge(selTime.split(':')[0], svc.price);
+  let total   = sc.price * selGroup;
+  let affCode = null;
+  if(rc){
+    const rUser = getUsers().find(u=>u.code===rc);
+    const rAff  = getAffs().find(a=>a.code===rc);
+    if(rUser && !currentUser) total = Math.round(total*0.9);
+    if(rAff) affCode = rc;
   }
+  const b = {
+    id: Date.now().toString(),
+    name: `${firstName} ${lastName}`.trim(),
+    email, phone,
+    service: svc.id, serviceName: svc.name,
+    date: selDate, time: selTime, groupSize: selGroup,
+    address: fullAddr, refCode: rc, affiliateCode: affCode,
+    payment: selPay, status: 'pending',
+    paymentStatus: (selPay==='card'||selPay==='link') ? 'pending' : 'cash',
+    source: 'web',
+    price: window._couponFinalPrice || total,
+    originalPrice: total,
+    couponCode: window._activeCoupon ? window._activeCoupon.code : null,
+    couponDiscount: window._couponDiscount || 0,
+    createdAt: new Date().toISOString()
+  };
 
-  _doSubmitAnimation(btn);
-}
-
-function _doSubmitAnimation(btn){
-  // Start loading animation
+  // ── Start loading animation ──
   btn.classList.add('loading');
   btn.querySelector('.submit-arrow').style.display='none';
   btn.querySelector('.submit-text').style.display='none';
   btn.querySelector('.submit-dots').style.display='flex';
 
-  setTimeout(() => {
-    // Show success
+  try {
+    // ── Real fetch to DB ──
+    const ok = await API.saveBooking(b);
+    if(!ok) console.warn('Booking saved to localStorage fallback (DB unreachable), id='+b.id);
+
+    // Push to in-memory cache
+    allBookings.push(b);
+    curBookingData = b;
+
+    // ── Show success state ──
     btn.querySelector('.submit-dots').style.display='none';
     btn.querySelector('.submit-check').style.display='block';
     btn.querySelector('.submit-check').textContent='✓';
     btn.querySelector('.submit-text').style.display='block';
     btn.querySelector('.submit-text').textContent=currentLang==='es'?'Enviado':'Sent';
-    showToast(currentLang==='es'?'✓ Cita solicitada exitosamente':'✓ Appointment requested successfully', 'success', 3500);
     btn.classList.remove('loading');
     btn.classList.add('success');
-
-    // Launch confetti
+    showToast(currentLang==='es'?'✓ Cita solicitada exitosamente':'✓ Appointment requested successfully','success',3500);
     launchConfetti();
 
-    // Actually submit after short delay
-    setTimeout(() => {
-      submitBooking();
-      // Reset button
-      setTimeout(() => {
-        btn.classList.remove('success');
-        btn.querySelector('.submit-check').style.display='none';
-        btn.querySelector('.submit-arrow').style.display='block';
-        const txt = btn.querySelector('.submit-text');
-        txt.textContent = currentLang==='es'?'SOLICITAR CITA':'REQUEST APPOINTMENT';
-      }, 3000);
-    }, 600);
-  }, 1200);
+    // ── Open confirm modal ──
+    document.getElementById('confirmBody').textContent=
+      `${b.name}\n${svc.name}${selGroup>1?' × '+selGroup:''}\n${selDate} at ${selTime}\n${fullAddr}\nPayment: ${selPay.toUpperCase()}\nTotal: ${fmtP(b.price)}\n\nPending confirmation. You'll hear back via WhatsApp shortly.`;
+
+    const boldSec  = document.getElementById('boldPaySection');
+    const boldBtn2 = document.getElementById('boldPayNowBtn');
+    if(boldSec && boldBtn2){
+      if(selPay==='card'||selPay==='link'){
+        boldSec.style.display='block';
+        boldBtn2.onclick=function(){ closeModal('confirmModal'); payWithBold(b.id,b.price,b.serviceName||b.service); };
+      } else { boldSec.style.display='none'; }
+    }
+    openModal('confirmModal');
+
+    // ── Reset form state ──
+    selDate=null; selTime=null; selGroup=1; selPay=null;
+    window._activeCoupon=null; window._couponDiscount=0; window._couponFinalPrice=null;
+    renderCal();
+    document.getElementById('timeSlotsWrap').style.display='none';
+    document.getElementById('pricePreview').classList.remove('show');
+    document.querySelectorAll('.grp-btn').forEach((gb,i)=>gb.classList.toggle('selected',i===0));
+    document.querySelectorAll('.pay-option').forEach(o=>o.classList.remove('selected'));
+
+    setTimeout(()=>{
+      btn.classList.remove('success');
+      btn.querySelector('.submit-check').style.display='none';
+      btn.querySelector('.submit-arrow').style.display='block';
+      btn.querySelector('.submit-text').textContent=currentLang==='es'?'SOLICITAR CITA':'REQUEST APPOINTMENT';
+    },3000);
+
+  } catch(err) {
+    console.error('Booking submit error:', err);
+    btn.classList.remove('loading');
+    btn.querySelector('.submit-dots').style.display='none';
+    btn.querySelector('.submit-arrow').style.display='block';
+    btn.querySelector('.submit-text').style.display='block';
+    showToast('Error al guardar la cita. Intenta de nuevo.','error',4000);
+  }
 }
 
 function launchConfetti(){
