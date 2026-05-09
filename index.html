@@ -877,6 +877,11 @@ nav.scrolled .nav-signin-btn.admin-active{
   #heroImg{ object-position:center top; }
 }
 
+.addr-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--off);border:1px solid rgba(255,255,255,0.1);border-top:none;z-index:300;border-radius:0 0 4px 4px;overflow:hidden;}
+.addr-item{padding:10px 14px;font-size:11px;font-family:'Space Mono',monospace;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.06);line-height:1.5;color:var(--text);}
+.addr-item:last-child{border-bottom:none;}
+.addr-item:hover,.addr-item.active{background:var(--panel);}
+
 </style>
 </head>
 <body>
@@ -1025,7 +1030,7 @@ nav.scrolled .nav-signin-btn.admin-active{
       <button type="button" class="grp-btn" onclick="selectGroup(5,this)">5+</button>
     </div>
   </div>
-  <div class="form-group"><label class="form-label" data-en="Your Address" data-es="Tu Dirección">Your Address</label><input type="text" class="form-input" id="bookAddr" placeholder="Cra 35 #8A-20, El Poblado..."></div>
+  <div class="form-group" style="position:relative"><label class="form-label" data-en="Your Address" data-es="Tu Dirección">Your Address</label><input type="text" class="form-input" id="bookAddr" placeholder="Cra 35 #8A-20, El Poblado..." autocomplete="off"><div id="addrDropdown" class="addr-dropdown" style="display:none"></div></div>
   <div class="form-group"><label class="form-label" data-en="Apt / Unit / Tower (optional)" data-es="Apto / Unidad / Torre (opcional)">Apt / Unit / Tower (optional)</label><input type="text" class="form-input" id="bookApt" placeholder="Apto 301, Torre B..."></div>
   <div class="form-group">
     <label class="form-label" data-en="Coupon Code (optional)" data-es="Código de Descuento (opcional)">Coupon Code (optional)</label>
@@ -1805,6 +1810,84 @@ function checkCoverage(){
   res.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 document.getElementById('addrInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkCoverage();});
+
+// ─── NOMINATIM ADDRESS AUTOCOMPLETE ───
+(function(){
+  var input    = document.getElementById('bookAddr');
+  var dropdown = document.getElementById('addrDropdown');
+  if(!input || !dropdown) return;
+
+  var debounceTimer = null;
+  var activeIdx = -1;
+
+  function closeDropdown(){
+    dropdown.style.display = 'none';
+    dropdown.innerHTML = '';
+    activeIdx = -1;
+  }
+
+  function renderItems(results){
+    if(!results.length){ closeDropdown(); return; }
+    dropdown.innerHTML = results.map(function(r, i){
+      return '<div class="addr-item" data-lat="'+r.lat+'" data-lon="'+r.lon+'" data-idx="'+i+'">'
+        + escHtml(r.display_name)
+        + '</div>';
+    }).join('');
+    dropdown.style.display = 'block';
+    dropdown.querySelectorAll('.addr-item').forEach(function(el){
+      el.addEventListener('mousedown', function(e){
+        e.preventDefault(); // keep focus on input
+        input.value = el.textContent;
+        window.bookLat = parseFloat(el.getAttribute('data-lat'));
+        window.bookLng = parseFloat(el.getAttribute('data-lon'));
+        closeDropdown();
+      });
+    });
+  }
+
+  function escHtml(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+  function fetchSuggestions(q){
+    fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q)+'&format=json&countrycodes=co&limit=5&addressdetails=0', {
+      headers:{ 'Accept-Language':'es', 'User-Agent':'MichailBarberApp/1.0' }
+    })
+    .then(function(r){ return r.json(); })
+    .then(renderItems)
+    .catch(function(){ closeDropdown(); });
+  }
+
+  input.addEventListener('input', function(){
+    clearTimeout(debounceTimer);
+    var q = input.value.trim();
+    if(q.length < 3){ closeDropdown(); return; }
+    debounceTimer = setTimeout(function(){ fetchSuggestions(q); }, 400);
+  });
+
+  // Keyboard navigation
+  input.addEventListener('keydown', function(e){
+    var items = dropdown.querySelectorAll('.addr-item');
+    if(!items.length) return;
+    if(e.key === 'ArrowDown'){
+      e.preventDefault();
+      activeIdx = Math.min(activeIdx+1, items.length-1);
+      items.forEach(function(el,i){ el.classList.toggle('active', i===activeIdx); });
+    } else if(e.key === 'ArrowUp'){
+      e.preventDefault();
+      activeIdx = Math.max(activeIdx-1, 0);
+      items.forEach(function(el,i){ el.classList.toggle('active', i===activeIdx); });
+    } else if(e.key === 'Enter' && activeIdx >= 0){
+      e.preventDefault();
+      items[activeIdx].dispatchEvent(new MouseEvent('mousedown'));
+    } else if(e.key === 'Escape'){
+      closeDropdown();
+    }
+  });
+
+  // Close on outside click
+  document.addEventListener('click', function(e){
+    if(!input.contains(e.target) && !dropdown.contains(e.target)) closeDropdown();
+  });
+})();
 
 // ─── BOOKING SUBMIT ───
 function submitBooking(){
