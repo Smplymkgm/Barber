@@ -960,7 +960,7 @@ nav.scrolled .nav-signin-btn.admin-active{
   <h2 class="section-title" data-en="I COME TO YOU" data-es="VOY DONDE ESTÁS">I COME TO YOU</h2>
   <p class="section-sub" data-en="Enter your address to check availability and pricing." data-es="Ingresa tu dirección para ver disponibilidad y precio.">Enter your address to check availability and pricing.</p>
   <input type="text" class="addr-input" id="addrInput" placeholder="Your address in Medellín..." data-ph-en="Your address in Medellín..." data-ph-es="Tu dirección en Medellín...">
-  <button class="check-btn" onclick="checkCoverage()" data-en="CHECK COVERAGE" data-es="VER COBERTURA">CHECK COVERAGE</button>
+  <button type="button" class="check-btn" onclick="checkCoverage()" data-en="CHECK COVERAGE" data-es="VER COBERTURA">CHECK COVERAGE</button>
   <div class="cov-result" id="covResult"></div>
 </section>
 
@@ -1306,7 +1306,7 @@ nav.scrolled .nav-signin-btn.admin-active{
 const ADMIN_USER = 'michail';
 const BOLD_API_KEY = 'zrs_Cb7UZlY8IGHGelNqnwITn3w15pGarebA_6cfWKo';
 var currentAdminPage = 'dashboard';
-const ADMIN_PASS = 'admin2025';
+// ADMIN_PASS is validated server-side via /.netlify/functions/auth
 const MAX_PER_DAY = 5;
 const MAX_SUBS = 10;
 const IG_URL = 'https://www.instagram.com/michaaaaaail?igsh=cGYxcmxpYXlpOWM4&utm_source=qr';
@@ -1567,9 +1567,16 @@ const ZONE_DISTS=[
   {kw:['marinilla','carmen de viboral'],d:62},
 ];
 function checkCoverage(){
-  const addr=document.getElementById('addrInput').value.toLowerCase().trim();
-  if(!addr) return;
+  const addrEl=document.getElementById('addrInput');
   const res=document.getElementById('covResult');
+  if(!addrEl||!res) return;
+  const addr=addrEl.value.toLowerCase().trim();
+  if(!addr){
+    res.className='cov-result show no';
+    res.textContent=currentLang==='es'?'Ingresa tu dirección para verificar cobertura.':'Enter your address to check coverage.';
+    res.scrollIntoView({behavior:'smooth',block:'nearest'});
+    return;
+  }
   let dist=30;
   for(const z of ZONE_DISTS){ if(z.kw.some(k=>addr.includes(k))){ dist=z.d; break; } }
   const sur=distToSurcharge(dist);
@@ -1577,6 +1584,7 @@ function checkCoverage(){
   if(sur===null){ res.textContent=currentLang==='es'?'Fuera del área de cobertura (máx. 100km). Escríbenos por WhatsApp.':'Outside coverage area (max 100km). Message us on WhatsApp for a custom quote.'; }
   else if(sur===0){ res.textContent=currentLang==='es'?'✓ Dentro de la zona — precio estándar.':'✓ Within coverage area — standard pricing.'; }
   else{ const base=getServices()[0]?.price||150000; const total=Math.round(base*(1+sur/100)); res.textContent=currentLang==='es'?`✓ Cobertura disponible · Recargo +${sur}% · Corte desde ${fmtP(total)}`:`✓ Coverage available · Distance surcharge +${sur}% · Haircut from ${fmtP(total)}`; }
+  res.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 document.getElementById('addrInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkCoverage();});
 
@@ -1589,6 +1597,8 @@ function submitBooking(){
   const ph=document.getElementById('bookPhone').value.trim();
   const svcId=document.getElementById('serviceSelect').value;
   const addr=document.getElementById('bookAddr').value.trim();
+  const apt=document.getElementById('bookApt')?.value?.trim()||'';
+  const fullAddr=apt?addr+', '+apt:addr;
   const rc=document.getElementById('refCode').value.trim().toUpperCase();
   if(!fn||!em||!ph){alert('Please fill name, email and phone.');return;}
   if(!selDate){alert('Please select a date.');return;}
@@ -1719,14 +1729,21 @@ async function doSignIn(){
   const pw=document.getElementById('aiPass').value;
   if(!em||!pw){ alert('Email/username and password required.'); return; }
 
-  // Admin check (local, no DB needed)
-  if((em===ADMIN_USER||em==='michail')&&pw===ADMIN_PASS){
-    currentUser={name:'Michail González',email:ADMIN_USER,isAdmin:true};
-    DB.set('session', {isAdmin:true, email:ADMIN_USER});
-    closeModal('authModal');
-    document.getElementById('navSignInBtn').textContent='⚙';
-    document.getElementById('navSignInBtn').title='Admin Panel';
-    showToast('✓ Welcome back, Michail');
+  // Admin check via backend (password never stored in frontend)
+  if(em===ADMIN_USER||em==='michail'){
+    try {
+      const ar=await fetch('/.netlify/functions/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+      if(ar.ok){
+        currentUser={name:'Michail González',email:ADMIN_USER,isAdmin:true};
+        DB.set('session',{isAdmin:true,email:ADMIN_USER});
+        closeModal('authModal');
+        document.getElementById('navSignInBtn').textContent='⚙';
+        document.getElementById('navSignInBtn').title='Admin Panel';
+        showToast('✓ Welcome back, Michail');
+        return;
+      }
+    } catch(e){}
+    alert('Invalid credentials.');
     return;
   }
 
@@ -3520,62 +3537,62 @@ function exportPDFReport(){
   h += 'footer{margin-top:32px;font-size:9px;color:#8a8a8a;text-align:center;border-top:1px solid #e8e6e0;padding-top:16px;}';
   // removed broken line
 // ─── HERO PHOTO UPLOAD ───
+function _applyHeroPhoto(src){
+  const img=document.getElementById('heroImg');
+  if(!img||!src) return;
+  img.src=src;
+  img.style.display='block';
+  const hint=document.getElementById('heroPhotoHint');
+  if(hint) hint.style.display='none';
+  img.onerror=function(){ img.style.display='none'; if(hint) hint.style.display=''; };
+}
+
 function initHeroUpload(){
   try {
-    const stored = DB.get('heroPhoto', null);
-    const img = document.getElementById('heroImg');
-    if(!stored || !img){ return; }
-    img.src = stored;
-    img.style.display = 'block';
-    // Hide the placeholder hint
-    const hint = document.getElementById('heroPhotoHint');
-    if(hint) hint.style.display = 'none';
-    img.onerror = function(){
-      DB.set('heroPhoto', null);
-      img.style.display = 'none';
-      if(hint) hint.style.display = '';
-    };
-  } catch(e){ console.error('Hero init error:', e); }
+    const stored=DB.get('heroPhoto',null);
+    if(stored){ _applyHeroPhoto(stored); return; }
+    // Not in localStorage — try DB settings (visible to all visitors)
+    fetch('/.netlify/functions/data?type=settings')
+      .then(r=>r.ok?r.json():null)
+      .then(s=>{ if(s&&s.hero_photo) _applyHeroPhoto(s.hero_photo); })
+      .catch(()=>{});
+  } catch(e){}
 }
 
 function handleHeroUpload(input){
   if(!input.files[0]) return;
-  const file = input.files[0];
-  const sizeMB = (file.size / (1024*1024)).toFixed(1);
+  const file=input.files[0];
+  const sizeMB=(file.size/(1024*1024)).toFixed(1);
 
-  if(file.size > 4 * 1024 * 1024){
-    alert('La foto pesa ' + sizeMB + 'MB. El límite máximo es 4MB.');
+  if(file.size > 500 * 1024){
+    alert('La foto pesa '+sizeMB+'MB. El límite es 500KB para garantizar carga rápida. Comprime la imagen antes de subir.');
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = function(e){
-    try {
-      const testKey = '__storageTest__';
-      localStorage.setItem(testKey, e.target.result);
-      localStorage.removeItem(testKey);
-      DB.set('heroPhoto', e.target.result);
-      initHeroUpload();
-      renderAdminPage('design');
-      showToast('✓ Foto actualizada (' + sizeMB + 'MB)', 'success', 2500);
-    } catch(err){
-      if(err.name === 'QuotaExceededError'){
-        alert('Error: sin espacio de almacenamiento. La foto pesa ' + sizeMB + 'MB y supera el espacio disponible.');
-      } else {
-        alert('Error: ' + err.message);
-      }
-    }
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const dataUrl=e.target.result;
+    // Store in localStorage for instant admin preview
+    try{ DB.set('heroPhoto',dataUrl); }catch(err){}
+    // Save to DB so all visitors see the photo
+    API.saveSetting('hero_photo',dataUrl)
+      .then(ok=>{ if(!ok) console.warn('Hero photo not saved to DB'); })
+      .catch(console.error);
+    _applyHeroPhoto(dataUrl);
+    renderAdminPage('design');
+    showToast('✓ Foto actualizada ('+sizeMB+'MB)','success',2500);
   };
-  reader.onerror = function(){
-    alert('Error: no se pudo leer el archivo.');
-  };
+  reader.onerror=function(){ alert('Error: no se pudo leer el archivo.'); };
   reader.readAsDataURL(file);
 }
 
 function removeHeroPhoto(){
-  DB.set('heroPhoto', null);
-  const img = document.getElementById('heroImg');
-  if(img) img.remove();
+  DB.set('heroPhoto',null);
+  API.saveSetting('hero_photo','').catch(console.error);
+  const img=document.getElementById('heroImg');
+  if(img){ img.src=''; img.style.display='none'; }
+  const hint=document.getElementById('heroPhotoHint');
+  if(hint) hint.style.display='';
   renderAdminPage('design');
 }
 
@@ -4772,6 +4789,11 @@ async function initFromDB(){
     }
     if(settings.active_palette){
       applyPalette(settings.active_palette);
+    }
+
+    // Apply hero photo for all visitors (not just the admin who uploaded)
+    if(settings.hero_photo && !DB.get('heroPhoto',null)){
+      _applyHeroPhoto(settings.hero_photo);
     }
 
     renderCal();
