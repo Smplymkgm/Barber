@@ -1337,9 +1337,9 @@ nav.scrolled .nav-signin-btn.admin-active{
 const ADMIN_USER = 'michail';
 const BOLD_API_KEY = 'zrs_Cb7UZlY8IGHGelNqnwITn3w15pGarebA_6cfWKo';
 const BANK_NAME    = 'Bancolombia';
-const BANK_ACCOUNT = '000-000000-00';
+const BANK_ACCOUNT = '123-456789-00';
 const BANK_TYPE    = 'Ahorros';
-const BANK_HOLDER  = 'Michail Barber';
+const BANK_HOLDER  = 'Michail González';
 const BANK_NEQUI   = '+57 300 000 0000';
 const PAYPAL_LINK  = 'https://paypal.me/michailbarber';
 var currentAdminPage = 'dashboard';
@@ -1650,7 +1650,7 @@ function openModal(id){
   // Close on outside click
   el.onclick = function(e){ if(e.target === el) closeModal(id); };
 }
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function closeModal(id){ const m=document.getElementById(id); if(m){ m.classList.remove('open'); m.style.display=''; } }
 function openPanel(){ document.getElementById('sidePanel').classList.add('open'); }
 function closePanel(){ document.getElementById('sidePanel').classList.remove('open'); }
 
@@ -2750,48 +2750,66 @@ async function submitBookingAnimated(){
     curBookingData = b;
 
     // ── Show success state ──
-    btn.querySelector('.submit-dots').style.display='none';
-    btn.querySelector('.submit-check').style.display='block';
-    btn.querySelector('.submit-check').textContent='✓';
-    btn.querySelector('.submit-text').style.display='block';
+    const dotsEl  = btn.querySelector('.submit-dots');
+    const checkEl = btn.querySelector('.submit-check');
+    const textEl  = btn.querySelector('.submit-text');
+    if(dotsEl)  dotsEl.style.display='none';
+    if(checkEl){ checkEl.style.display='block'; checkEl.textContent='✓'; }
+    if(textEl)  textEl.style.display='block';
     btn.classList.remove('loading');
     btn.classList.add('success');
 
-    // ── Branch by payment method ──
-    if(selPay==='cash'){
-      btn.querySelector('.submit-text').textContent=currentLang==='es'?'Confirmado':'Confirmed';
+    // ── Branch by payment method (read from saved booking, not mutable selPay) ──
+    const payMethod = b.payment;
+    const snapDate  = b.date;
+    const snapTime  = b.time;
+    const snapGroup = b.groupSize || 1;
+    const snapSvc   = svc.name;
+    const snapPrice = fmtP(b.price);
+    const snapName  = b.name;
+
+    function _openModal(id){
+      const m = document.getElementById(id);
+      if(!m) return;
+      m.classList.add('open');
+      m.style.display = 'flex';
+      m.onclick = function(e){ if(e.target===m){ m.classList.remove('open'); m.style.display=''; } };
+    }
+
+    if(payMethod==='cash'){
+      if(textEl) textEl.textContent=currentLang==='es'?'Confirmado':'Confirmed';
       showToast(currentLang==='es'?'✓ Cita confirmada — pagas en efectivo al momento del servicio':'✓ Booking confirmed — pay cash at appointment','success',4500);
       launchConfetti();
-      document.getElementById('confirmBody').textContent=
-        `${b.name}\n${svc.name}${selGroup>1?' × '+selGroup:''}\n${selDate} at ${selTime}\n${fullAddr}\nPayment: CASH (pay at appointment)\nTotal: ${fmtP(b.price)}\n\nBooking confirmed! You'll hear from us on WhatsApp shortly.`;
+      const cb=document.getElementById('confirmBody');
+      if(cb) cb.textContent=`${snapName}\n${snapSvc}${snapGroup>1?' × '+snapGroup:''}\n${snapDate} at ${snapTime}\n${fullAddr}\nPayment: CASH (pay at appointment)\nTotal: ${snapPrice}\n\nBooking confirmed! You'll hear from us on WhatsApp shortly.`;
       const bs=document.getElementById('boldPaySection'); if(bs) bs.style.display='none';
-      openModal('confirmModal');
+      _openModal('confirmModal');
 
-    } else if(selPay==='transfer'){
-      btn.querySelector('.submit-text').textContent=currentLang==='es'?'Enviado':'Sent';
-      showToast(currentLang==='es'?'✓ Solicitud enviada — realiza la transferencia para confirmar':'✓ Request sent — transfer to confirm booking','success',5000);
-      // Populate transfer modal with dynamic bank values from config constants
-      document.getElementById('tmBankName').textContent = BANK_NAME;
-      document.getElementById('tmAccount').textContent  = BANK_ACCOUNT;
-      document.getElementById('tmType').textContent     = BANK_TYPE;
-      document.getElementById('tmHolder').textContent   = BANK_HOLDER;
-      document.getElementById('tmNequi').textContent    = BANK_NEQUI;
-      document.getElementById('transferBookingInfo').textContent =
-        `${b.name} · ${svc.name}${selGroup>1?' × '+selGroup:''} · ${selDate} at ${selTime} · ${fmtP(b.price)}`;
-      openModal('transferModal');
+    } else if(payMethod==='transfer'){
+      if(textEl) textEl.textContent=currentLang==='es'?'Enviado':'Sent';
+      showToast(currentLang==='es'?'✓ Solicitud enviada — transfiere para confirmar':'✓ Request sent — transfer to confirm booking','success',5000);
+      const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+      set('tmBankName', BANK_NAME);
+      set('tmAccount',  BANK_ACCOUNT);
+      set('tmType',     BANK_TYPE);
+      set('tmHolder',   BANK_HOLDER);
+      set('tmNequi',    BANK_NEQUI);
+      set('transferBookingInfo', `${snapName} · ${snapSvc}${snapGroup>1?' × '+snapGroup:''} · ${snapDate} at ${snapTime} · ${snapPrice}`);
+      _openModal('transferModal');
 
-    } else if(selPay==='card'||selPay==='link'){
-      btn.querySelector('.submit-text').textContent=currentLang==='es'?'Pagando...':'Paying...';
+    } else if(payMethod==='card'||payMethod==='link'){
+      if(textEl) textEl.textContent=currentLang==='es'?'Pagando...':'Paying...';
       showToast(currentLang==='es'?'Abriendo pago con Bold...':'Opening Bold checkout...','success',3000);
       setTimeout(()=>{ payWithBold(b.id, b.price, b.serviceName||b.service); }, 500);
 
-    } else if(selPay==='paypal'){
-      btn.querySelector('.submit-text').textContent=currentLang==='es'?'Enviado':'Sent';
+    } else if(payMethod==='paypal'){
+      if(textEl) textEl.textContent=currentLang==='es'?'Enviado':'Sent';
       showToast(currentLang==='es'?'✓ Solicitud enviada — completa el pago por PayPal':'✓ Request sent — complete PayPal payment','success',5000);
-      document.getElementById('paypalBookingInfo').textContent =
-        `${b.name} · ${svc.name}${selGroup>1?' × '+selGroup:''} · ${selDate} at ${selTime} · ${fmtP(b.price)}`;
-      document.getElementById('paypalPayLink').href = PAYPAL_LINK + '/' + (b.price/1000).toFixed(0) + 'COP';
-      openModal('paypalModal');
+      const pi=document.getElementById('paypalBookingInfo');
+      if(pi) pi.textContent=`${snapName} · ${snapSvc}${snapGroup>1?' × '+snapGroup:''} · ${snapDate} at ${snapTime} · ${snapPrice}`;
+      const pl=document.getElementById('paypalPayLink');
+      if(pl) pl.href=PAYPAL_LINK+'/'+(b.price/1000).toFixed(0)+'COP';
+      _openModal('paypalModal');
     }
 
     // ── Reset form state ──
