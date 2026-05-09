@@ -1298,6 +1298,36 @@ nav.scrolled .nav-signin-btn.admin-active{
     </div>
   </div>
 </div>
+<div class="modal" id="transferModal" onclick="if(event.target===this)closeModal('transferModal')">
+  <div class="modal-sheet">
+    <button class="modal-x" onclick="closeModal('transferModal')">✕</button>
+    <div class="modal-title">TRANSFER DETAILS</div>
+    <div id="transferBookingInfo" style="font-family:monospace;font-size:12px;color:var(--gray);margin-bottom:18px;line-height:1.6;"></div>
+    <div style="background:var(--panel);border-radius:4px;padding:16px 18px;margin-bottom:18px;line-height:2;font-size:13px;">
+      <div><span style="color:var(--gray);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Bank</span><br><strong id="tmBankName"></strong></div>
+      <div style="margin-top:10px;"><span style="color:var(--gray);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Account</span><br><strong id="tmAccount"></strong> (<span id="tmType"></span>)</div>
+      <div style="margin-top:10px;"><span style="color:var(--gray);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Holder</span><br><strong id="tmHolder"></strong></div>
+      <div style="margin-top:10px;"><span style="color:var(--gray);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Or via Nequi</span><br><strong id="tmNequi"></strong></div>
+    </div>
+    <p style="font-size:12px;color:var(--gray);line-height:1.6;margin-bottom:18px;">Send the exact amount and <strong>reply to our WhatsApp</strong> with the payment receipt. Your booking is <em>pending</em> until we confirm it.</p>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal('transferModal')">Close</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="paypalModal" onclick="if(event.target===this)closeModal('paypalModal')">
+  <div class="modal-sheet">
+    <button class="modal-x" onclick="closeModal('paypalModal')">✕</button>
+    <div class="modal-title">PAYPAL PAYMENT</div>
+    <div id="paypalBookingInfo" style="font-family:monospace;font-size:12px;color:var(--gray);margin-bottom:18px;line-height:1.6;"></div>
+    <p style="font-size:13px;line-height:1.6;margin-bottom:18px;">Complete your payment through PayPal. Once paid, <strong>reply to our WhatsApp</strong> with the PayPal confirmation so we can approve your booking.</p>
+    <a id="paypalPayLink" href="#" target="_blank" rel="noopener" style="display:block;text-align:center;background:#0070ba;color:#fff;padding:14px;border-radius:4px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.08em;text-decoration:none;margin-bottom:18px;">PAY WITH PAYPAL</a>
+    <p style="font-size:11px;color:var(--gray);text-align:center;">Booking stays <em>pending</em> until payment is confirmed.</p>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal('paypalModal')">Close</button>
+    </div>
+  </div>
+</div>
 <div class="modal" id="authModal" onclick="if(event.target===this)closeModal('authModal')"><div class="modal-sheet"><button class="modal-x" onclick="closeModal('authModal')">✕</button><div class="modal-title" id="authTitle">SIGN IN</div><div id="authContent"></div></div></div>
 <div class="modal" id="subModal" onclick="if(event.target===this)closeModal('subModal')"><div class="modal-sheet"><button class="modal-x" onclick="closeModal('subModal')">✕</button><div class="modal-title" id="subModalTitle">SUBSCRIBE</div><div id="subModalContent"></div></div></div>
 <div class="modal" id="affModal" onclick="if(event.target===this)closeModal('affModal')"><div class="modal-sheet"><button class="modal-x" onclick="closeModal('affModal')">✕</button><div class="modal-title">BECOME AN AFFILIATE</div><div id="affModalContent"></div></div></div>
@@ -1306,6 +1336,12 @@ nav.scrolled .nav-signin-btn.admin-active{
 // ─── CONFIG ───
 const ADMIN_USER = 'michail';
 const BOLD_API_KEY = 'zrs_Cb7UZlY8IGHGelNqnwITn3w15pGarebA_6cfWKo';
+const BANK_NAME    = 'Bancolombia';
+const BANK_ACCOUNT = '000-000000-00';
+const BANK_TYPE    = 'Ahorros';
+const BANK_HOLDER  = 'Michail Barber';
+const BANK_NEQUI   = '+57 300 000 0000';
+const PAYPAL_LINK  = 'https://paypal.me/michailbarber';
 var currentAdminPage = 'dashboard';
 // ADMIN_PASS is validated server-side via /.netlify/functions/auth
 const MAX_PER_DAY = 5;
@@ -1503,7 +1539,7 @@ function adminOpenCalendar(){
 }
 function changeMonth(dir){ calMonth+=dir; if(calMonth>11){calMonth=0;calYear++;} if(calMonth<0){calMonth=11;calYear--;} selDate=null;selTime=null; document.getElementById('timeSlotsWrap').style.display='none'; document.getElementById('pricePreview').classList.remove('show'); renderCal(); }
 function selectDate(ds){
-  selDate=ds;selTime=null;
+  selDate=ds; window.selectedDate=ds; selTime=null;
   renderCal();
   // Check if date is full - show waitlist
   const dayCount = getBookings().filter(function(b){return b.date===ds&&b.status!=='cancelled';}).length;
@@ -1546,7 +1582,7 @@ function renderTimeSlots(ds){
     return `<div class="time-slot${isB?' blocked':''}${isSel?' selected':''}"${!isB?` onclick="selectTime('${t}')"`:''}>${t}${lbl?`<span class="slot-surcharge">${lbl}</span>`:''}</div>`;
   }).join('');
 }
-function selectTime(t){ selTime=t; renderTimeSlots(selDate); updatePricePreview(); }
+function selectTime(t){ selTime=t; window.selectedTime=t; renderTimeSlots(selDate); updatePricePreview(); }
 
 // ─── PRICE PREVIEW ───
 function updatePricePreview(){
@@ -2553,25 +2589,45 @@ async function submitBookingAnimated(){
     btn.querySelector('.submit-check').style.display='block';
     btn.querySelector('.submit-check').textContent='✓';
     btn.querySelector('.submit-text').style.display='block';
-    btn.querySelector('.submit-text').textContent=currentLang==='es'?'Enviado':'Sent';
     btn.classList.remove('loading');
     btn.classList.add('success');
-    showToast(currentLang==='es'?'✓ Cita solicitada exitosamente':'✓ Appointment requested successfully','success',3500);
-    launchConfetti();
 
-    // ── Open confirm modal ──
-    document.getElementById('confirmBody').textContent=
-      `${b.name}\n${svc.name}${selGroup>1?' × '+selGroup:''}\n${selDate} at ${selTime}\n${fullAddr}\nPayment: ${selPay.toUpperCase()}\nTotal: ${fmtP(b.price)}\n\nPending confirmation. You'll hear back via WhatsApp shortly.`;
+    // ── Branch by payment method ──
+    if(selPay==='cash'){
+      btn.querySelector('.submit-text').textContent=currentLang==='es'?'Confirmado':'Confirmed';
+      showToast(currentLang==='es'?'✓ Cita confirmada — pagas en efectivo al momento del servicio':'✓ Booking confirmed — pay cash at appointment','success',4500);
+      launchConfetti();
+      document.getElementById('confirmBody').textContent=
+        `${b.name}\n${svc.name}${selGroup>1?' × '+selGroup:''}\n${selDate} at ${selTime}\n${fullAddr}\nPayment: CASH (pay at appointment)\nTotal: ${fmtP(b.price)}\n\nBooking confirmed! You'll hear from us on WhatsApp shortly.`;
+      const bs=document.getElementById('boldPaySection'); if(bs) bs.style.display='none';
+      openModal('confirmModal');
 
-    const boldSec  = document.getElementById('boldPaySection');
-    const boldBtn2 = document.getElementById('boldPayNowBtn');
-    if(boldSec && boldBtn2){
-      if(selPay==='card'||selPay==='link'){
-        boldSec.style.display='block';
-        boldBtn2.onclick=function(){ closeModal('confirmModal'); payWithBold(b.id,b.price,b.serviceName||b.service); };
-      } else { boldSec.style.display='none'; }
+    } else if(selPay==='transfer'){
+      btn.querySelector('.submit-text').textContent=currentLang==='es'?'Enviado':'Sent';
+      showToast(currentLang==='es'?'✓ Solicitud enviada — realiza la transferencia para confirmar':'✓ Request sent — transfer to confirm booking','success',5000);
+      // Populate transfer modal with dynamic bank values from config constants
+      document.getElementById('tmBankName').textContent = BANK_NAME;
+      document.getElementById('tmAccount').textContent  = BANK_ACCOUNT;
+      document.getElementById('tmType').textContent     = BANK_TYPE;
+      document.getElementById('tmHolder').textContent   = BANK_HOLDER;
+      document.getElementById('tmNequi').textContent    = BANK_NEQUI;
+      document.getElementById('transferBookingInfo').textContent =
+        `${b.name} · ${svc.name}${selGroup>1?' × '+selGroup:''} · ${selDate} at ${selTime} · ${fmtP(b.price)}`;
+      openModal('transferModal');
+
+    } else if(selPay==='card'||selPay==='link'){
+      btn.querySelector('.submit-text').textContent=currentLang==='es'?'Pagando...':'Paying...';
+      showToast(currentLang==='es'?'Abriendo pago con Bold...':'Opening Bold checkout...','success',3000);
+      setTimeout(()=>{ payWithBold(b.id, b.price, b.serviceName||b.service); }, 500);
+
+    } else if(selPay==='paypal'){
+      btn.querySelector('.submit-text').textContent=currentLang==='es'?'Enviado':'Sent';
+      showToast(currentLang==='es'?'✓ Solicitud enviada — completa el pago por PayPal':'✓ Request sent — complete PayPal payment','success',5000);
+      document.getElementById('paypalBookingInfo').textContent =
+        `${b.name} · ${svc.name}${selGroup>1?' × '+selGroup:''} · ${selDate} at ${selTime} · ${fmtP(b.price)}`;
+      document.getElementById('paypalPayLink').href = PAYPAL_LINK + '/' + (b.price/1000).toFixed(0) + 'COP';
+      openModal('paypalModal');
     }
-    openModal('confirmModal');
 
     // ── Reset form state ──
     selDate=null; selTime=null; selGroup=1; selPay=null;
