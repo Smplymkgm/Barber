@@ -2914,7 +2914,7 @@ async function submitBookingAnimated(){
     document.getElementById('tmType').textContent = BANK_TYPE;
     document.getElementById('tmHolder').textContent = BANK_HOLDER;
     document.getElementById('tmNequi').textContent = BANK_NEQUI;
-    openModal('transferModal');
+    showModal('transferModal');
 
   } else if(payMethod === 'card' || payMethod === 'link'){
     btn.querySelector('.submit-text').textContent = currentLang==='es' ? 'Redirigiendo...' : 'Redirecting...';
