@@ -1983,7 +1983,16 @@ function submitBooking(){
       boldBtn.style.display='none';
     }
   }
-  openModal('confirmModal');
+  if (b.payment === 'transfer') {
+    document.getElementById('tmBankName').textContent = BANK_NAME;
+    document.getElementById('tmAccount').textContent = BANK_ACCOUNT;
+    document.getElementById('tmType').textContent = BANK_TYPE;
+    document.getElementById('tmHolder').textContent = BANK_HOLDER;
+    document.getElementById('tmNequi').textContent = BANK_NEQUI;
+    openModal('transferModal');
+  } else {
+    openModal('confirmModal');
+  }
   selDate=null;selTime=null;selGroup=1;selPay=null;
   renderCal(); document.getElementById('timeSlotsWrap').style.display='none'; document.getElementById('pricePreview').classList.remove('show');
   document.querySelectorAll('.grp-btn').forEach((b,i)=>b.classList.toggle('selected',i===0));

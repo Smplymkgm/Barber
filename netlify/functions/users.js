@@ -25,6 +25,11 @@ exports.handler = async function(event) {
     if (event.httpMethod === 'GET') {
       const { email, username } = event.queryStringParameters || {};
 
+      // Admin is not a DB user — auth goes through /.netlify/functions/auth
+      if ((email && email.toLowerCase() === 'admin') || (username && username.toLowerCase() === 'admin')) {
+        return { statusCode: 401, headers, body: JSON.stringify({ error: 'admin_auth_required' }) };
+      }
+
       if (email) {
         const rows = await sql`SELECT * FROM users WHERE LOWER(email) = LOWER(${email}) LIMIT 1`;
         if (!rows.length) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Not found' }) };
