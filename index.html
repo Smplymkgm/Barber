@@ -881,6 +881,7 @@ nav.scrolled .nav-signin-btn.admin-active{
 .addr-item{padding:10px 14px;font-size:11px;font-family:'Space Mono',monospace;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.06);line-height:1.5;color:var(--text);}
 .addr-item:last-child{border-bottom:none;}
 .addr-item:hover,.addr-item.active{background:var(--panel);}
+@keyframes spin{to{transform:rotate(360deg);}}
 
 </style>
 </head>
@@ -1657,6 +1658,23 @@ function openModal(id){
 }
 function closeModal(id){ var m=document.getElementById(id); if(m){ m.classList.remove('open'); m.style.display=''; } }
 function showModal(id){ var m=document.getElementById(id); if(!m){ console.warn('showModal: element not found:',id); return; } m.style.display='flex'; m.classList.add('open'); m.onclick=function(e){ if(e.target===m) closeModal(id); }; }
+function openTransferModal(name, svc, grpSuffix, date, time, price){
+  var g=function(id){ return document.getElementById(id); };
+  var info=name+' · '+svc+grpSuffix+' · '+date+' at '+time+' · '+price;
+  var t;
+  t=g('transferBookingInfo'); if(t) t.textContent=info;
+  t=g('tmBankName');          if(t) t.textContent=BANK_NAME;
+  t=g('tmAccount');           if(t) t.textContent=BANK_ACCOUNT;
+  t=g('tmType');              if(t) t.textContent=BANK_TYPE;
+  t=g('tmHolder');            if(t) t.textContent=BANK_HOLDER;
+  t=g('tmNequi');             if(t) t.textContent=BANK_NEQUI;
+  var m=g('transferModal');
+  if(!m){ console.error('[openTransferModal] #transferModal not found in DOM'); return; }
+  m.style.setProperty('display','flex','important');
+  m.classList.add('open');
+  m.onclick=function(ev){ if(ev.target===m) closeModal('transferModal'); };
+  console.log('[openTransferModal] opened — display:',m.style.display,'classes:',m.className);
+}
 function openPanel(){ document.getElementById('sidePanel').classList.add('open'); }
 function closePanel(){ document.getElementById('sidePanel').classList.remove('open'); }
 
@@ -2891,19 +2909,21 @@ async function submitBookingAnimated(){
   } else if(payMethod === 'transfer'){
     btn.querySelector('.submit-text').textContent = currentLang==='es' ? 'Enviado' : 'Sent';
     showToast(currentLang==='es' ? '✓ Solicitud enviada — transfiere para confirmar' : '✓ Request sent — transfer to confirm booking', 'success', 5000);
-    var tid = document.getElementById('transferBookingInfo');
-    if(tid) tid.textContent = snapName+' · '+snapSvc+grpSuffix+' · '+snapDate+' at '+snapTime+' · '+snapPrice;
-    var tmb = document.getElementById('tmBankName');   if(tmb) tmb.textContent = BANK_NAME;
-    var tma = document.getElementById('tmAccount');    if(tma) tma.textContent = BANK_ACCOUNT;
-    var tmt = document.getElementById('tmType');       if(tmt) tmt.textContent = BANK_TYPE;
-    var tmh = document.getElementById('tmHolder');     if(tmh) tmh.textContent = BANK_HOLDER;
-    var tmn = document.getElementById('tmNequi');      if(tmn) tmn.textContent = BANK_NEQUI;
-    showModal('transferModal');
+    openTransferModal(snapName, snapSvc, grpSuffix, snapDate, snapTime, snapPrice);
 
   } else if(payMethod === 'card' || payMethod === 'link'){
-    btn.querySelector('.submit-text').textContent = currentLang==='es' ? 'Pagando...' : 'Paying...';
-    showToast(currentLang==='es' ? 'Abriendo pago con Bold...' : 'Opening Bold checkout...', 'success', 3000);
-    setTimeout(function(){ payWithBold(b.id, b.price, b.serviceName||b.service); }, 500);
+    btn.querySelector('.submit-text').textContent = currentLang==='es' ? 'Redirigiendo...' : 'Redirecting...';
+    // Show full-screen spinner while Bold signature fetch runs
+    var boldSpinner = document.createElement('div');
+    boldSpinner.id = 'boldSpinner';
+    boldSpinner.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;';
+    boldSpinner.innerHTML = '<div style="width:36px;height:36px;border:3px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite;"></div>'
+      + '<p style="color:#fff;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;">'+(currentLang==='es'?'Redirigiendo al pago...':'Redirecting to payment...')+'</p>';
+    document.body.appendChild(boldSpinner);
+    var boldOrderId = 'MB-' + b.id + '-' + Date.now();
+    openBoldPayment(b.price, 'Michail Barber - '+(b.serviceName||b.service), boldOrderId)
+      .catch(function(){})
+      .finally(function(){ var s=document.getElementById('boldSpinner'); if(s) s.remove(); });
 
   } else if(payMethod === 'paypal'){
     btn.querySelector('.submit-text').textContent = currentLang==='es' ? 'Enviado' : 'Sent';
