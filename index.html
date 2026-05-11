@@ -2910,7 +2910,7 @@ async function submitBookingAnimated(){
     btn.querySelector('.submit-text').textContent = currentLang==='es' ? 'Enviado' : 'Sent';
     showToast(currentLang==='es' ? '✓ Solicitud enviada — transfiere para confirmar' : '✓ Request sent — transfer to confirm booking', 'success', 5000);
     document.getElementById('tmBankName').textContent = BANK_NAME;
-    document.getElementById('tmAccount').textContent = BANK_ACCOUNT;
+    document.getElementById('tmAccount').textContent = BANK_ACCOUNT + ' (' + BANK_TYPE + ')';
     document.getElementById('tmType').textContent = BANK_TYPE;
     document.getElementById('tmHolder').textContent = BANK_HOLDER;
     document.getElementById('tmNequi').textContent = BANK_NEQUI;
