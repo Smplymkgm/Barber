@@ -2052,15 +2052,17 @@ function showAuth(mode){
   }
   openModal('authModal');
 }
+let _loginPending = false;
 async function doSignIn(){
-  const em=document.getElementById('aiEmail').value.trim().toLowerCase();
-  const pw=document.getElementById('aiPass').value;
+  if(_loginPending) return;
+  const em = document.getElementById('aiEmail').value.trim().toLowerCase();
+  const pw = document.getElementById('aiPass').value;
   if(!em||!pw){ alert('Email/username and password required.'); return; }
-
-  // Admin check via backend (password never stored in frontend)
-  if(em===ADMIN_USER||em==='michail'||em==='admin'){
-    try {
-      const ar=await fetch('/.netlify/functions/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+  _loginPending = true;
+  try {
+    // Admin: single fetch to /auth — no DB calls
+    if(em===ADMIN_USER||em==='michail'||em==='admin'){
+      const ar = await fetch('/.netlify/functions/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:em,password:pw})});
       if(ar.ok){
         currentUser={name:'Michail González',email:ADMIN_USER,isAdmin:true};
         DB.set('session',{isAdmin:true,email:ADMIN_USER});
@@ -2070,27 +2072,27 @@ async function doSignIn(){
         showToast('✓ Welcome back, Michail');
         return;
       }
-    } catch(e){}
-    alert('Invalid credentials.');
-    return;
-  }
+      alert('Invalid credentials.');
+      return;
+    }
 
-  // Try DB lookup by email, then by username
-  let u = await API.getUser(em, null);
-  if(!u) u = await API.getUser(null, em); // try as username
-  if(!u){
-    // Fallback: localStorage (offline/dev)
-    const local=getUsers().find(function(u){ return u.email.toLowerCase()===em||u.username===em; });
-    if(local) u={password:local.password,email:local.email,name:local.name,phone:local.phone,code:local.code,referredBy:local.referredBy,referralCount:local.referralCount,isAdmin:local.isAdmin,isAffiliate:local.isAffiliate,username:local.username};
+    // Regular user — DB lookup by email, then username
+    let u = await API.getUser(em, null);
+    if(!u) u = await API.getUser(null, em);
+    if(!u){
+      const local=getUsers().find(function(u){ return u.email.toLowerCase()===em||u.username===em; });
+      if(local) u={password:local.password,email:local.email,name:local.name,phone:local.phone,code:local.code,referredBy:local.referredBy,referralCount:local.referralCount,isAdmin:local.isAdmin,isAffiliate:local.isAffiliate,username:local.username};
+    }
+    if(!u||u.password!==btoa(pw)){ alert('Invalid credentials.'); return; }
+    currentUser={name:u.name,email:u.email,phone:u.phone,code:u.code,referredBy:u.referred_by||u.referredBy,referralCount:u.referral_count||u.referralCount||0,isAdmin:u.is_admin||u.isAdmin||false,isAffiliate:u.is_affiliate||u.isAffiliate||false,username:u.username,password:u.password};
+    DB.set('session',{email:currentUser.email});
+    closeModal('authModal');
+    document.getElementById('navSignInBtn').textContent='◉';
+    showToast('✓ '+(currentLang==='es'?'Inicio de sesión exitoso':'Signed in successfully'));
+    renderProfilePanel(); openPanel();
+  } finally {
+    _loginPending = false;
   }
-  if(!u||u.password!==btoa(pw)){ alert('Invalid credentials.'); return; }
-
-  currentUser={name:u.name,email:u.email,phone:u.phone,code:u.code,referredBy:u.referred_by||u.referredBy,referralCount:u.referral_count||u.referralCount||0,isAdmin:u.is_admin||u.isAdmin||false,isAffiliate:u.is_affiliate||u.isAffiliate||false,username:u.username,password:u.password};
-  DB.set('session', {email:currentUser.email});
-  closeModal('authModal');
-  document.getElementById('navSignInBtn').textContent='◉';
-  showToast('✓ ' + (currentLang==='es'?'Inicio de sesión exitoso':'Signed in successfully'));
-  renderProfilePanel(); openPanel();
 }
 async function doRegister(){
   const fn=document.getElementById('rnFirst').value.trim();
