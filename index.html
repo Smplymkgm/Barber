@@ -2049,7 +2049,7 @@ async function doSignIn(){
   if(!em||!pw){ alert('Email/username and password required.'); return; }
 
   // Admin check via backend (password never stored in frontend)
-  if(em===ADMIN_USER||em==='michail'){
+  if(em===ADMIN_USER||em==='michail'||em==='admin'){
     try {
       const ar=await fetch('/.netlify/functions/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
       if(ar.ok){
@@ -4408,16 +4408,25 @@ function initBoldCheckout(amount, description, orderId, integritySignature){
   s.id = 'boldScript';
   s.src = 'https://checkout.bold.co/library/boldPaymentButton.js';
   s.onload = function(){
-    var checkout = new BoldCheckout({
-      orderId: orderId,
-      currency: 'COP',
-      amount: String(amount),
-      apiKey: 'zrs_Cb7UZlY8IGHGelNqnwITn3w15pGarebA_6cfWKo',
-      integritySignature: integritySignature,
-      description: description,
-      redirectionUrl: window.location.origin + '/?payment=success',
-    });
-    checkout.open();
+    try {
+      var checkout = new BoldCheckout({
+        orderId: orderId,
+        currency: 'COP',
+        amount: String(amount),
+        apiKey: BOLD_API_KEY,
+        integritySignature: integritySignature,
+        description: description,
+        redirectionUrl: window.location.origin + '/?payment=success',
+      });
+      checkout.open();
+    } catch(e){
+      console.error('[Bold] checkout.open() failed:', e);
+      showToast('Error al abrir el pago. Intenta de nuevo.', 'error', 4000);
+    }
+  };
+  s.onerror = function(){
+    console.error('[Bold] script failed to load');
+    showToast('Error cargando pasarela de pago.', 'error', 4000);
   };
   document.head.appendChild(s);
 }
