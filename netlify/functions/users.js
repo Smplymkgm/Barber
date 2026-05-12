@@ -1,129 +1,110 @@
 // netlify/functions/users.js
-// GET    /.netlify/functions/users?email=x      → lookup user by email
-// GET    /.netlify/functions/users?username=x   → lookup user by username
-// GET    /.netlify/functions/users              → all users (admin use)
-// POST   /.netlify/functions/users             → register user
-// PUT    /.netlify/functions/users             → update user fields
-// DELETE /.netlify/functions/users?email=x    → delete user
-
 const { neon } = require('@neondatabase/serverless');
 
 const headers = {
-  'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type'
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Content-Type': 'application/json'
 };
 
-exports.handler = async function(event) {
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(36) + str.length.toString(36);
+}
 
-  const sql = neon(process.env.NETLIFY_DATABASE_URL);
+exports.handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' };
+
+  const sql = neon(process.env.DATABASE_URL);
 
   try {
-    // ── GET ──
+    // GET - lookup user
     if (event.httpMethod === 'GET') {
-      const { email, username } = event.queryStringParameters || {};
+      const p = event.queryStringParameters || {};
 
-      // Admin is not a DB user — auth goes through /.netlify/functions/auth
-      if ((email && email.toLowerCase() === 'admin') || (username && username.toLowerCase() === 'admin')) {
-        return { statusCode: 401, headers, body: JSON.stringify({ error: 'admin_auth_required' }) };
-      }
-
-      if (email) {
-        const rows = await sql`SELECT * FROM users WHERE LOWER(email) = LOWER(${email}) LIMIT 1`;
+      if (p.email) {
+        const rows = await sql`SELECT id, username, email, first_name, last_name, phone, role, affiliate_code, created_at FROM users WHERE email = ${p.email} LIMIT 1`;
         if (!rows.length) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Not found' }) };
         return { statusCode: 200, headers, body: JSON.stringify(rows[0]) };
       }
 
-      if (username) {
-        const rows = await sql`SELECT * FROM users WHERE LOWER(username) = LOWER(${username}) LIMIT 1`;
+      if (p.username) {
+        const rows = await sql`SELECT id, username, email, first_name, last_name, phone, role, affiliate_code, created_at FROM users WHERE username = ${p.username} LIMIT 1`;
         if (!rows.length) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Not found' }) };
         return { statusCode: 200, headers, body: JSON.stringify(rows[0]) };
       }
 
-      // All users for admin
-      const rows = await sql`SELECT * FROM users ORDER BY created_at DESC`;
+      if (p.id) {
+        const rows = await sql`SELECT id, username, email, first_name, last_name, phone, role, affiliate_code, created_at FROM users WHERE id = ${p.id} LIMIT 1`;
+        if (!rows.length) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Not found' }) };
+        return { statusCode: 200, headers, body: JSON.stringify(rows[0]) };
+      }
+
+      // All users (admin)
+      const rows = await sql`SELECT id, username, email, first_name, last_name, phone, role, affiliate_code, created_at FROM users ORDER BY created_at DESC`;
       return { statusCode: 200, headers, body: JSON.stringify(rows) };
     }
 
-    // ── POST (register) ──
+    // POST - register user
     if (event.httpMethod === 'POST') {
-      const u = JSON.parse(event.body);
-      if (!u.email || !u.password) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing email or password' }) };
-      }
+      const b = JSON.parse(event.body || '{}');
+      const { username, email, password, firstName, lastName, name, phone, role } = b;
 
-      // Check if email or username already exists
-      const existing = await sql`
-        SELECT id FROM users WHERE LOWER(email) = LOWER(${u.email})
-        ${u.username ? sql`OR LOWER(username) = LOWER(${u.username})` : sql``}
-        LIMIT 1
-      `;
-      if (existing.length) {
-        return { statusCode: 409, headers, body: JSON.stringify({ error: 'exists' }) };
-      }
+      if (!email) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Email required' }) };
+
+      // Check duplicate
+      const existing = await sql`SELECT id FROM users WHERE email = ${email}`;
+      if (existing.length) return { statusCode: 409, headers, body: JSON.stringify({ error: 'Email already registered' }) };
+
+      const fn = firstName || (name ? name.split(' ')[0] : '');
+      const ln = lastName || (name ? name.split(' ').slice(1).join(' ') : '');
+      const uname = username || email.split('@')[0];
+      const hashedPw = password ? simpleHash(password) : '';
+      const userRole = role || 'client';
+      const affCode = userRole === 'affiliate' ? 'MICH-' + Math.random().toString(36).substring(2,6).toUpperCase() : null;
 
       const rows = await sql`
-        INSERT INTO users (username, email, name, phone, password, code, referred_by, is_admin, is_affiliate, user_type)
-        VALUES (
-          ${u.username || null}, ${u.email}, ${u.name || ''}, ${u.phone || null},
-          ${u.password}, ${u.code || null}, ${u.referredBy || null},
-          ${u.isAdmin || false}, ${u.isAffiliate || false}, ${u.userType || 'client'}
-        )
-        RETURNING id, username, email, name, phone, code, referred_by, referral_count, is_admin, is_affiliate, created_at
+        INSERT INTO users (username, email, password_hash, first_name, last_name, phone, role, affiliate_code)
+        VALUES (${uname}, ${email}, ${hashedPw}, ${fn}, ${ln}, ${phone||''}, ${userRole}, ${affCode})
+        RETURNING id, username, email, first_name, last_name, phone, role, affiliate_code
       `;
-
-      // Increment referral count on referring user
-      if (u.referredBy) {
-        await sql`
-          UPDATE users SET referral_count = referral_count + 1
-          WHERE code = ${u.referredBy}
-        `;
-      }
 
       return { statusCode: 201, headers, body: JSON.stringify(rows[0]) };
     }
 
-    // ── PUT (update) ──
+    // PUT - update user
     if (event.httpMethod === 'PUT') {
-      const u = JSON.parse(event.body);
-      if (!u.email) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing email' }) };
+      const b = JSON.parse(event.body || '{}');
+      const { id, phone, firstName, lastName } = b;
+      if (!id) return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID required' }) };
 
-      if (u.password !== undefined) {
-        await sql`UPDATE users SET password = ${u.password} WHERE LOWER(email) = LOWER(${u.email})`;
-      }
-      if (u.phone !== undefined) {
-        await sql`UPDATE users SET phone = ${u.phone} WHERE LOWER(email) = LOWER(${u.email})`;
-      }
-      if (u.name !== undefined) {
-        await sql`UPDATE users SET name = ${u.name} WHERE LOWER(email) = LOWER(${u.email})`;
-      }
-      if (u.isAffiliate !== undefined) {
-        await sql`UPDATE users SET is_affiliate = ${u.isAffiliate} WHERE LOWER(email) = LOWER(${u.email})`;
-      }
-      if (u.referralCount !== undefined) {
-        await sql`UPDATE users SET referral_count = ${u.referralCount} WHERE LOWER(email) = LOWER(${u.email})`;
-      }
-      if (u.userType !== undefined) {
-        await sql`UPDATE users SET user_type = ${u.userType} WHERE LOWER(email) = LOWER(${u.email})`;
-      }
-
-      return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
+      const rows = await sql`
+        UPDATE users SET
+          first_name = COALESCE(${firstName}, first_name),
+          last_name = COALESCE(${lastName}, last_name),
+          phone = COALESCE(${phone}, phone)
+        WHERE id = ${id}
+        RETURNING id, username, email, first_name, last_name, phone, role
+      `;
+      return { statusCode: 200, headers, body: JSON.stringify(rows[0]) };
     }
 
-    // ── DELETE ──
+    // DELETE
     if (event.httpMethod === 'DELETE') {
       const email = event.queryStringParameters?.email;
-      if (!email) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing email' }) };
-      await sql`DELETE FROM users WHERE LOWER(email) = LOWER(${email})`;
-      return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
+      if (!email) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Email required' }) };
+      await sql`DELETE FROM users WHERE email = ${email}`;
+      return { statusCode: 200, headers, body: JSON.stringify({ deleted: true }) };
     }
 
-    return { statusCode: 405, headers, body: 'Method not allowed' };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
 
-  } catch (err) {
-    console.error('Users function error:', err);
-    return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
+  } catch (e) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
   }
 };
