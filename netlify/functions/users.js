@@ -20,7 +20,7 @@ function simpleHash(str) {
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' };
 
-  const sql = neon(process.env.DATABASE_URL);
+  const sql = neon(process.env.NETLIFY_DATABASE_URL);
 
   try {
     // GET - lookup user
