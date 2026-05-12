@@ -59,6 +59,8 @@ exports.handler = async function(event) {
 
     // Add order_id column if missing on existing deployments
     await sql`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS order_id TEXT`;
+  await sql`ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS password_hash TEXT DEFAULT ''`;
+  await sql`ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS username TEXT DEFAULT ''`;
 
     // SERVICES table
     await sql`CREATE TABLE IF NOT EXISTS services (
