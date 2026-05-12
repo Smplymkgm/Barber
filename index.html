@@ -1791,7 +1791,7 @@ function renderTimeSlots(ds){
   });
   document.getElementById('timeSlots').innerHTML=allSlots.map(t=>{
     const isBl=blocked.has(t);
-    return '<button class="time-slot'+(isBl?' disabled':'')+'" '+(isBl?'disabled':'')+' onclick="selectTime(''+t+'',this)">'+t+'</button>';
+    return '<button class="time-slot'+(isBl?' disabled':'')+'" '+(isBl?'disabled':'')+' onclick="selectTime('"+t+"',this)">'+t+'</button>';
   }).join('');
 }
 
