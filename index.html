@@ -887,8 +887,8 @@ nav.scrolled .nav-signin-btn.admin-active{
 /* BOOKING POPUP */
 #bookingPopupModal{position:fixed;inset:0;z-index:899;background:rgba(0,0,0,0.7);display:none;}
 #bookingPopupModal.open{display:block;}
-.booking-popup-sheet{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--surface);z-index:900;overflow-y:auto;display:flex;flex-direction:column;}
-.booking-popup-close{position:sticky;top:0;z-index:10;background:var(--surface);border:none;color:var(--text);font-size:22px;cursor:pointer;padding:16px 20px;display:block;line-height:1;text-align:left;}
+.booking-popup-sheet{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--surface,#0d0d0d);z-index:900;overflow-y:auto;display:flex;flex-direction:column;}
+.booking-popup-close{position:sticky;top:0;z-index:10;background:var(--surface,#0d0d0d);border:none;color:var(--text,#fff);font-size:22px;cursor:pointer;padding:16px 20px;display:block;line-height:1;text-align:left;}
 .booking-popup-inner{padding:0 20px 40px;}
 /* PROMO POPUP */
 .promo-popup-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);}
@@ -897,7 +897,7 @@ nav.scrolled .nav-signin-btn.admin-active{
 .promo-popup-content{position:relative;z-index:2;padding:32px 24px 24px;text-align:center;}
 .promo-popup-close{position:absolute;top:10px;right:12px;z-index:3;background:rgba(0,0,0,0.5);border:none;color:#fff;font-size:16px;cursor:pointer;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;}
 .promo-popup-text{color:#fff;font-size:15px;line-height:1.5;margin-bottom:20px;text-shadow:0 1px 4px rgba(0,0,0,0.6);}
-.promo-popup-cta{background:var(--accent);color:#000;border:none;border-radius:8px;padding:12px 28px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.05em;text-transform:uppercase;}
+.promo-popup-cta{background:var(--accent,#d4a84b);color:#000;border:none;border-radius:8px;padding:12px 28px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.05em;text-transform:uppercase;}
 </style>
 </head>
 <body>
@@ -1763,35 +1763,34 @@ function selectDate(ds){
   }
 }
 function renderTimeSlots(ds){
-  const allSlots=[];
-  for(let hr=8;hr<=20;hr++){
-    allSlots.push((hr<10?'0'+hr:String(hr))+':00');
-    if(hr<20) allSlots.push((hr<10?'0'+hr:String(hr))+':30');
+  var allSlots=[];
+  for(var hr=8;hr<=20;hr++){
+    allSlots.push((hr<10?'0'+hr:''+hr)+':00');
+    if(hr<20) allSlots.push((hr<10?'0'+hr:''+hr)+':30');
   }
-  const bookings=getBookings(); const blocks=getBlocks();
-  const blocked=new Set();
-  blocks.filter(b=>b.date===ds).forEach(b=>{
-    if(b.type==='day'){allSlots.forEach(t=>blocked.add(t));return;}
-    if(b.startTime&&b.endTime) allSlots.forEach(t=>{if(t>=b.startTime&&t<b.endTime)blocked.add(t);});
+  var bookings=getBookings(); var blocks=getBlocks();
+  var blocked={};
+  blocks.filter(function(b){return b.date===ds;}).forEach(function(b){
+    if(b.type==='day'){allSlots.forEach(function(t){blocked[t]=1;});return;}
+    if(b.startTime&&b.endTime) allSlots.forEach(function(t){if(t>=b.startTime&&t<b.endTime)blocked[t]=1;});
   });
-  const svcId=document.getElementById('serviceSelect')?.value||'haircut';
-  const svc=getServices().find(s=>s.id===svcId);
-  const svcDur=svc?.duration||60;
-  bookings.filter(b=>b.date===ds&&b.status!=='cancelled').forEach(b=>{
-    const [bh,bm]=b.time.split(':').map(Number);
-    const bStart=bh*60+bm;
-    const bookedSvc=getServices().find(s=>s.id===b.service);
-    const bookedDur=bookedSvc?.duration||60;
-    const blockFrom=bStart-30; const blockTo=bStart+bookedDur+30;
-    allSlots.forEach(t=>{
-      const [th,tm]=t.split(':').map(Number);
-      const tMin=th*60+tm; const tEnd=tMin+svcDur+30;
-      if((tMin>=blockFrom&&tMin<blockTo)||(tEnd>bStart-30&&tMin<blockTo)) blocked.add(t);
+  var svcId=(document.getElementById('serviceSelect')||{}).value||'haircut';
+  var svcs=getServices(); var svc=null;
+  for(var k=0;k<svcs.length;k++){if(svcs[k].id===svcId){svc=svcs[k];break;}}
+  var svcDur=svc&&svc.duration?svc.duration:60;
+  bookings.filter(function(b){return b.date===ds&&b.status!=='cancelled';}).forEach(function(b){
+    var parts=b.time.split(':'); var bStart=parseInt(parts[0])*60+parseInt(parts[1]);
+    var bSvc=null; for(var k=0;k<svcs.length;k++){if(svcs[k].id===b.service){bSvc=svcs[k];break;}}
+    var bookedDur=bSvc&&bSvc.duration?bSvc.duration:60;
+    var blockFrom=bStart-30; var blockTo=bStart+bookedDur+30;
+    allSlots.forEach(function(t){
+      var tp=t.split(':'); var tMin=parseInt(tp[0])*60+parseInt(tp[1]); var tEnd=tMin+svcDur+30;
+      if((tMin>=blockFrom&&tMin<blockTo)||(tEnd>bStart-30&&tMin<blockTo)) blocked[t]=1;
     });
   });
-  document.getElementById('timeSlots').innerHTML=allSlots.map(t=>{
-    const isBl=blocked.has(t);
-    return '<button class="time-slot'+(isBl?' disabled':'')+'" '+(isBl?'disabled':'')+' onclick="selectTime(\'' +t+ '\',this)">'+t+'<\/button>';
+  document.getElementById('timeSlots').innerHTML=allSlots.map(function(t){
+    var isBl=!!blocked[t];
+    return '<button class="time-slot'+(isBl?' disabled':'')+'"'+(isBl?' disabled':'')+' onclick="selectTime(this.textContent,this)">'+t+'</button>';
   }).join('');
 }
 
@@ -6811,83 +6810,120 @@ function toggleRecType(){
 
 
 // ─── INIT: Load all data from DB on startup ───
-async // ═══ BOOKING POPUP ═══
+async // === BOOKING POPUP ===
 function openBookingPopup(prefillSvcId){
-  const overlay=document.getElementById('bookingPopupModal');
-  const inner=document.getElementById('bookingPopupInner');
-  const src=document.getElementById('booking');
-  if(src&&inner){inner.innerHTML='';const cl=src.cloneNode(true);cl.removeAttribute('id');inner.appendChild(cl);}
+  var overlay=document.getElementById('bookingPopupModal');
+  var inner=document.getElementById('bookingPopupInner');
+  var src=document.getElementById('booking');
+  if(src&&inner){
+    inner.innerHTML='';
+    var cl=src.cloneNode(true);
+    cl.removeAttribute('id');
+    inner.appendChild(cl);
+  }
   overlay.classList.add('open');
   document.body.style.overflow='hidden';
   setTimeout(function(){
     renderCal();
     populateServiceSelect();
-    if(prefillSvcId){const sel=document.getElementById('serviceSelect');if(sel){sel.value=prefillSvcId;if(typeof updatePricePreview==='function')updatePricePreview();}}
+    if(prefillSvcId){
+      var sel=document.getElementById('serviceSelect');
+      if(sel){sel.value=prefillSvcId;if(typeof updatePricePreview==='function')updatePricePreview();}
+    }
   },50);
 }
 function closeBookingPopup(){
   document.getElementById('bookingPopupModal').classList.remove('open');
   document.body.style.overflow='';
 }
-// ═══ PROMO POPUP ═══
-var DEFAULT_PROMO={enabled:false,text:'Oferta especial',ctaText:'APLICAR',code:'',bgColor:'#111',bgOpacity:0.9,position:'center',durationSec:5};
+// === PROMO POPUP ===
+var DEFAULT_PROMO={enabled:false,text:'Oferta especial para nuevos clientes',ctaText:'APLICAR',code:'',bgColor:'#111111',bgOpacity:0.9,position:'center',durationSec:5};
 function getPromoConfig(){return DB.get('promoPopup',DEFAULT_PROMO);}
 function savePromoConfig(cfg){DB.set('promoPopup',cfg);}
 function showPromoPopup(){
-  var cfg=getPromoConfig();if(!cfg.enabled)return;
-  var overlay=document.getElementById('promoPopupOverlay');if(!overlay)return;
+  var cfg=getPromoConfig();
+  if(!cfg.enabled)return;
+  var overlay=document.getElementById('promoPopupOverlay');
+  if(!overlay)return;
   document.getElementById('promoPopupText').innerHTML=cfg.text||'';
   var cta=document.getElementById('promoPopupCta');
-  cta.textContent=cfg.ctaText||'APLICAR';cta.setAttribute('data-code',cfg.code||'');
+  cta.textContent=cfg.ctaText||'APLICAR';
+  cta.setAttribute('data-code',cfg.code||'');
   var bg=document.getElementById('promoPopupBg');
-  bg.style.background=cfg.bgColor||'#111';bg.style.opacity=cfg.bgOpacity!=null?cfg.bgOpacity:0.9;
+  bg.style.background=cfg.bgColor||'#111';
+  bg.style.opacity=cfg.bgOpacity!=null?cfg.bgOpacity:0.9;
   if(cfg.bgImage){bg.style.backgroundImage='url('+cfg.bgImage+')';bg.style.backgroundSize='cover';}
   overlay.style.alignItems=cfg.position==='bottom'?'flex-end':cfg.position==='top'?'flex-start':'center';
   overlay.style.display='flex';
   if(cfg.durationSec>0)setTimeout(closePromoPopup,cfg.durationSec*1000);
 }
-function closePromoPopup(){var o=document.getElementById('promoPopupOverlay');if(o)o.style.display='none';}
+function closePromoPopup(){
+  var o=document.getElementById('promoPopupOverlay');
+  if(o)o.style.display='none';
+}
 function applyPromoCode(){
-  var btn=document.getElementById('promoPopupCta');var code=btn?btn.getAttribute('data-code'):'';
-  if(code){var inp=document.getElementById('couponInput');if(inp)inp.value=code;showToast('Código: '+code);closePromoPopup();
-  var bp=document.getElementById('bookingPopupModal');if(!bp||!bp.classList.contains('open'))openBookingPopup();}
+  var btn=document.getElementById('promoPopupCta');
+  var code=btn?btn.getAttribute('data-code'):'';
+  if(code){
+    var inp=document.getElementById('couponInput');
+    if(inp)inp.value=code;
+    showToast('Código aplicado: '+code);
+    closePromoPopup();
+    var bp=document.getElementById('bookingPopupModal');
+    if(!bp||!bp.classList.contains('open'))openBookingPopup();
+  }
 }
 function buildPromoPopupPage(){
   var cfg=getPromoConfig();
-  return '<div class="admin-section-title">Promo Popup</div><div class="admin-card"><div class="admin-card-inner">'
-    +'<div class="form-group" style="display:flex;align-items:center;gap:12px"><label class="form-label" style="margin:0">Activar</label>'
-    +'<input type="checkbox" id="ppEnabled"'+(cfg.enabled?' checked':'')+'></div>'
-    +'<div class="form-group"><label class="form-label">Texto</label><textarea id="ppText" class="form-input" rows="3">'+(cfg.text||'')+'</textarea></div>'
-    +'<div class="form-group"><label class="form-label">Código</label><input type="text" id="ppCode" class="form-input" value="'+(cfg.code||'')+'"></div>'
-    +'<div class="form-group"><label class="form-label">Botón CTA</label><input type="text" id="ppCta" class="form-input" value="'+(cfg.ctaText||'APLICAR')+'"></div>'
-    +'<div style="display:flex;gap:12px">'
-    +'<div class="form-group" style="flex:1"><label class="form-label">Color fondo</label><input type="color" id="ppColor" class="form-input" value="'+(cfg.bgColor||'#111111')+'" style="height:44px;padding:4px"></div>'
-    +'<div class="form-group" style="flex:1"><label class="form-label">Opacidad</label><input type="number" id="ppOpacity" class="form-input" min="0" max="1" step="0.05" value="'+(cfg.bgOpacity!=null?cfg.bgOpacity:0.9)+'"></div></div>'
-    +'<div class="form-group"><label class="form-label">URL imagen fondo</label><input type="text" id="ppBgImg" class="form-input" value="'+(cfg.bgImage||'')+'"></div>'
-    +'<div class="form-group"><label class="form-label">Posición</label><select id="ppPosition" class="form-select">'
-    +'<option value="center"'+(cfg.position==='center'?' selected':'')+'>Centro</option>'
-    +'<option value="bottom"'+(cfg.position==='bottom'?' selected':'')+'>Abajo</option>'
-    +'<option value="top"'+(cfg.position==='top'?' selected':'')+'>Arriba</option></select></div>'
-    +'<div class="form-group"><label class="form-label">Duración (seg, 0=no cerrar)</label><input type="number" id="ppDuration" class="form-input" min="0" max="60" value="'+(cfg.durationSec!=null?cfg.durationSec:5)+'"></div>'
-    +'<div style="display:flex;gap:10px"><button class="act-btn" onclick="savePromoSettings()">GUARDAR</button>'
-    +'<button class="act-btn" style="background:var(--gray)" onclick="previewPromoPopup()">PREVIEW</button></div>'
-    +'</div></div>';
+  var html='<div class="admin-section-title">Promo Popup</div><div class="admin-card"><div class="admin-card-inner">';
+  html+='<div class="form-group" style="display:flex;align-items:center;gap:12px"><label class="form-label" style="margin:0">Activar</label>';
+  html+='<input type="checkbox" id="ppEnabled"'+(cfg.enabled?' checked':'')+'></div>';
+  html+='<div class="form-group"><label class="form-label">Texto</label>';
+  html+='<textarea id="ppText" class="form-input" rows="3">'+(cfg.text||'')+'</textarea></div>';
+  html+='<div class="form-group"><label class="form-label">Código de descuento</label>';
+  html+='<input type="text" id="ppCode" class="form-input" value="'+(cfg.code||'')+'"></div>';
+  html+='<div class="form-group"><label class="form-label">Texto botón CTA</label>';
+  html+='<input type="text" id="ppCta" class="form-input" value="'+(cfg.ctaText||'APLICAR')+'"></div>';
+  html+='<div style="display:flex;gap:12px">';
+  html+='<div class="form-group" style="flex:1"><label class="form-label">Color fondo</label>';
+  html+='<input type="color" id="ppColor" class="form-input" value="'+(cfg.bgColor||'#111111')+'" style="height:44px;padding:4px"></div>';
+  html+='<div class="form-group" style="flex:1"><label class="form-label">Opacidad (0-1)</label>';
+  html+='<input type="number" id="ppOpacity" class="form-input" min="0" max="1" step="0.05" value="'+(cfg.bgOpacity!=null?cfg.bgOpacity:0.9)+'"></div></div>';
+  html+='<div class="form-group"><label class="form-label">URL imagen fondo (opcional)</label>';
+  html+='<input type="text" id="ppBgImg" class="form-input" value="'+(cfg.bgImage||'')+'"></div>';
+  html+='<div class="form-group"><label class="form-label">Posicion</label>';
+  html+='<select id="ppPosition" class="form-select">';
+  html+='<option value="center"'+(cfg.position==='center'?' selected':'')+'>Centro</option>';
+  html+='<option value="bottom"'+(cfg.position==='bottom'?' selected':'')+'>Abajo</option>';
+  html+='<option value="top"'+(cfg.position==='top'?' selected':'')+'>Arriba</option>';
+  html+='</select></div>';
+  html+='<div class="form-group"><label class="form-label">Duracion seg (0=no cerrar)</label>';
+  html+='<input type="number" id="ppDuration" class="form-input" min="0" max="60" value="'+(cfg.durationSec!=null?cfg.durationSec:5)+'"></div>';
+  html+='<div style="display:flex;gap:10px">';
+  html+='<button class="act-btn" onclick="savePromoSettings()">GUARDAR</button>';
+  html+='<button class="act-btn" style="background:var(--gray)" onclick="previewPromoPopup()">PREVIEW</button>';
+  html+='</div></div></div>';
+  return html;
 }
 function savePromoSettings(){
+  var el=function(id){return document.getElementById(id)||{};};
   savePromoConfig({
-    enabled:!!(document.getElementById('ppEnabled')||{}).checked,
-    text:(document.getElementById('ppText')||{}).value||'',
-    code:(document.getElementById('ppCode')||{}).value||'',
-    ctaText:(document.getElementById('ppCta')||{}).value||'APLICAR',
-    bgColor:(document.getElementById('ppColor')||{}).value||'#111',
-    bgOpacity:parseFloat((document.getElementById('ppOpacity')||{}).value)||0.9,
-    bgImage:(document.getElementById('ppBgImg')||{}).value||'',
-    position:(document.getElementById('ppPosition')||{}).value||'center',
-    durationSec:parseInt((document.getElementById('ppDuration')||{}).value)||5
+    enabled:!!el('ppEnabled').checked,
+    text:el('ppText').value||'',
+    code:el('ppCode').value||'',
+    ctaText:el('ppCta').value||'APLICAR',
+    bgColor:el('ppColor').value||'#111111',
+    bgOpacity:parseFloat(el('ppOpacity').value)||0.9,
+    bgImage:el('ppBgImg').value||'',
+    position:el('ppPosition').value||'center',
+    durationSec:parseInt(el('ppDuration').value)||5
   });
   showToast('Guardado');
 }
-function previewPromoPopup(){savePromoSettings();var cfg=getPromoConfig();cfg.enabled=true;savePromoConfig(cfg);showPromoPopup();}
+function previewPromoPopup(){
+  savePromoSettings();
+  var cfg=getPromoConfig();cfg.enabled=true;savePromoConfig(cfg);showPromoPopup();
+}
 
 function initFromDB(){
   try {
@@ -6991,7 +7027,8 @@ function initFromDB(){
   </div>
 </div>
 
-<!-- BOOKING POPUP MODAL -->
+
+<!-- BOOKING POPUP -->
 <div id="bookingPopupModal" onclick="if(event.target===this)closeBookingPopup()">
   <div class="booking-popup-sheet">
     <button class="booking-popup-close" onclick="closeBookingPopup()">&#x2715;</button>
