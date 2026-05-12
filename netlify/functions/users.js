@@ -1,110 +1,99 @@
 // netlify/functions/users.js
 const { neon } = require('@neondatabase/serverless');
 
-const headers = {
+const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json'
 };
 
-function simpleHash(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash).toString(36) + str.length.toString(36);
+function simpleHash(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+  return Math.abs(h).toString(36) + s.length.toString(36);
+}
+
+function genCode() {
+  return 'MICH-' + Math.random().toString(36).substring(2,6).toUpperCase();
 }
 
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' };
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: CORS, body: '' };
 
   const sql = neon(process.env.NETLIFY_DATABASE_URL);
+  const p = event.queryStringParameters || {};
 
   try {
-    // GET - lookup user
+    // GET
     if (event.httpMethod === 'GET') {
-      const p = event.queryStringParameters || {};
-
       if (p.email) {
-        const rows = await sql`SELECT id, username, email, first_name, last_name, phone, role, affiliate_code, created_at FROM users WHERE email = ${p.email} LIMIT 1`;
-        if (!rows.length) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Not found' }) };
-        return { statusCode: 200, headers, body: JSON.stringify(rows[0]) };
+        const rows = await sql`SELECT id, username, email, name, phone, code, is_affiliate, is_admin, user_type, created_at FROM users WHERE email = ${p.email} LIMIT 1`;
+        if (!rows.length) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Not found' }) };
+        return { statusCode: 200, headers: CORS, body: JSON.stringify(rows[0]) };
       }
-
       if (p.username) {
-        const rows = await sql`SELECT id, username, email, first_name, last_name, phone, role, affiliate_code, created_at FROM users WHERE username = ${p.username} LIMIT 1`;
-        if (!rows.length) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Not found' }) };
-        return { statusCode: 200, headers, body: JSON.stringify(rows[0]) };
+        const rows = await sql`SELECT id, username, email, name, phone, code, is_affiliate, is_admin, user_type, created_at FROM users WHERE username = ${p.username} LIMIT 1`;
+        if (!rows.length) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Not found' }) };
+        return { statusCode: 200, headers: CORS, body: JSON.stringify(rows[0]) };
       }
-
       if (p.id) {
-        const rows = await sql`SELECT id, username, email, first_name, last_name, phone, role, affiliate_code, created_at FROM users WHERE id = ${p.id} LIMIT 1`;
-        if (!rows.length) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Not found' }) };
-        return { statusCode: 200, headers, body: JSON.stringify(rows[0]) };
+        const rows = await sql`SELECT id, username, email, name, phone, code, is_affiliate, is_admin, user_type, created_at FROM users WHERE id = ${p.id} LIMIT 1`;
+        if (!rows.length) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Not found' }) };
+        return { statusCode: 200, headers: CORS, body: JSON.stringify(rows[0]) };
       }
-
-      // All users (admin)
-      const rows = await sql`SELECT id, username, email, first_name, last_name, phone, role, affiliate_code, created_at FROM users ORDER BY created_at DESC`;
-      return { statusCode: 200, headers, body: JSON.stringify(rows) };
+      const rows = await sql`SELECT id, username, email, name, phone, code, is_affiliate, is_admin, user_type, created_at FROM users ORDER BY created_at DESC`;
+      return { statusCode: 200, headers: CORS, body: JSON.stringify(rows) };
     }
 
-    // POST - register user
+    // POST - register
     if (event.httpMethod === 'POST') {
       const b = JSON.parse(event.body || '{}');
-      const { username, email, password, firstName, lastName, name, phone, role } = b;
+      const email = (b.email || '').trim().toLowerCase();
+      if (!email) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Email required' }) };
 
-      if (!email) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Email required' }) };
-
-      // Check duplicate
       const existing = await sql`SELECT id FROM users WHERE email = ${email}`;
-      if (existing.length) return { statusCode: 409, headers, body: JSON.stringify({ error: 'Email already registered' }) };
+      if (existing.length) return { statusCode: 409, headers: CORS, body: JSON.stringify({ error: 'Email already registered' }) };
 
-      const fn = firstName || (name ? name.split(' ')[0] : '');
-      const ln = lastName || (name ? name.split(' ').slice(1).join(' ') : '');
-      const uname = username || email.split('@')[0];
-      const hashedPw = password ? simpleHash(password) : '';
-      const userRole = role || 'client';
-      const affCode = userRole === 'affiliate' ? 'MICH-' + Math.random().toString(36).substring(2,6).toUpperCase() : null;
+      const fn = b.firstName || '';
+      const ln = b.lastName || '';
+      const fullName = b.name || (fn + ' ' + ln).trim() || email.split('@')[0];
+      const username = (b.username || email.split('@')[0]).trim();
+      const phone = b.phone || '';
+      const pw = b.password ? simpleHash(b.password) : simpleHash('default');
+      const isAff = b.role === 'affiliate' || b.isAffiliate === true;
+      const code = isAff ? genCode() : null;
+      const userType = isAff ? 'affiliate' : (b.role || 'client');
 
       const rows = await sql`
-        INSERT INTO users (username, email, password_hash, first_name, last_name, phone, role, affiliate_code)
-        VALUES (${uname}, ${email}, ${hashedPw}, ${fn}, ${ln}, ${phone||''}, ${userRole}, ${affCode})
-        RETURNING id, username, email, first_name, last_name, phone, role, affiliate_code
-      `;
+        INSERT INTO users (username, email, name, phone, password, code, is_affiliate, user_type, referred_by)
+        VALUES (${username}, ${email}, ${fullName}, ${phone}, ${pw}, ${code}, ${isAff}, ${userType}, ${b.refCode || null})
+        RETURNING id, username, email, name, phone, code, is_affiliate, user_type`;
 
-      return { statusCode: 201, headers, body: JSON.stringify(rows[0]) };
+      return { statusCode: 201, headers: CORS, body: JSON.stringify({ ...rows[0], affiliate_code: rows[0].code }) };
     }
 
-    // PUT - update user
+    // PUT - update
     if (event.httpMethod === 'PUT') {
       const b = JSON.parse(event.body || '{}');
-      const { id, phone, firstName, lastName } = b;
-      if (!id) return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID required' }) };
-
+      if (!b.id) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'ID required' }) };
       const rows = await sql`
         UPDATE users SET
-          first_name = COALESCE(${firstName}, first_name),
-          last_name = COALESCE(${lastName}, last_name),
-          phone = COALESCE(${phone}, phone)
-        WHERE id = ${id}
-        RETURNING id, username, email, first_name, last_name, phone, role
-      `;
-      return { statusCode: 200, headers, body: JSON.stringify(rows[0]) };
+          name = COALESCE(${b.name}, name),
+          phone = COALESCE(${b.phone}, phone)
+        WHERE id = ${b.id}
+        RETURNING id, username, email, name, phone, code, is_affiliate, user_type`;
+      return { statusCode: 200, headers: CORS, body: JSON.stringify(rows[0]) };
     }
 
     // DELETE
     if (event.httpMethod === 'DELETE') {
-      const email = event.queryStringParameters?.email;
-      if (!email) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Email required' }) };
-      await sql`DELETE FROM users WHERE email = ${email}`;
-      return { statusCode: 200, headers, body: JSON.stringify({ deleted: true }) };
+      if (!p.email) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Email required' }) };
+      await sql`DELETE FROM users WHERE email = ${p.email}`;
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ deleted: true }) };
     }
 
-    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
-
+    return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: 'Method not allowed' }) };
   } catch (e) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
+    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: e.message }) };
   }
 };
