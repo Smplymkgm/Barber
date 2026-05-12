@@ -2478,16 +2478,28 @@ function openAffRegister(){
     <div style="display:flex;gap:11px;"><button class="modal-btn" onclick="closeModal('affModal')">Cancel</button><button class="modal-btn primary" onclick="doAffRegister()">REGISTER →</button></div>`;
   openModal('affModal');
 }
-function doAffRegister(){
-  const fn=document.getElementById('afFirst').value.trim(); const ln=document.getElementById('afLast').value.trim();
-  const em=document.getElementById('afEmail').value.trim().toLowerCase();
-  const ph=document.getElementById('afPhone').value.trim(); const bank=document.getElementById('afBank').value.trim(); const payout=document.getElementById('afPayout').value;
-  if(!fn||!em){alert('Name and email required.');return;}
-  const affs=getAffs(); if(affs.find(a=>a.email===em)){alert('Already registered as affiliate.');return;}
-  const code=genAffCode(fn);
-  affs.push({name:`${fn} ${ln}`.trim(),email:em,phone:ph,bank,payoutFreq:payout,code,totalCompleted:0,totalPaid:0,weeklyRefs:0,createdAt:new Date().toISOString()});
-  saveAffs(affs); closeModal('affModal');
-  alert(`Welcome ${fn}!\n\nYour affiliate code: ${code}\n\nShare it and earn on every completed service.`);
+function doAffRegister() {
+  const first = document.getElementById('afFirst')?.value?.trim();
+  const last = document.getElementById('afLast')?.value?.trim();
+  const email = document.getElementById('afEmail')?.value?.trim();
+  const phone = document.getElementById('afPhone')?.value?.trim();
+  const bank = document.getElementById('afBank')?.value?.trim();
+  if (!first || !email) { showToast('Name and email required'); return; }
+  const btn = document.querySelector('#affModal button[onclick*="doAff"]');
+  if (btn) btn.disabled = true;
+  fetch('/.netlify/functions/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ firstName: first, lastName: last, email, phone, role: 'affiliate', bank })
+  }).then(r => r.json()).then(data => {
+    if (data.id) {
+      closeModal('affModal');
+      showToast('Welcome! Your code: ' + (data.affiliate_code || 'MICH-' + data.id.toString(36).toUpperCase()));
+    } else {
+      showToast(data.error || 'Registration failed');
+    }
+  }).catch(e => showToast('Error: ' + e.message))
+  .finally(() => { if (btn) btn.disabled = false; });
 }
 function openPayAff(i){
   const s=document.createElement('div'); s.className='float-sheet';
