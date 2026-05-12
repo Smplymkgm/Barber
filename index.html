@@ -883,21 +883,6 @@ nav.scrolled .nav-signin-btn.admin-active{
 .addr-item:hover,.addr-item.active{background:var(--panel);}
 @keyframes spin{to{transform:rotate(360deg);}}
 
-
-/* BOOKING POPUP */
-#bookingPopupModal{position:fixed;inset:0;z-index:899;background:rgba(0,0,0,0.7);display:none;}
-#bookingPopupModal.open{display:block;}
-.booking-popup-sheet{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--surface,#0d0d0d);z-index:900;overflow-y:auto;display:flex;flex-direction:column;}
-.booking-popup-close{position:sticky;top:0;z-index:10;background:var(--surface,#0d0d0d);border:none;color:var(--text,#fff);font-size:22px;cursor:pointer;padding:16px 20px;display:block;line-height:1;text-align:left;}
-.booking-popup-inner{padding:0 20px 40px;}
-/* PROMO POPUP */
-.promo-popup-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);}
-.promo-popup-box{position:relative;width:min(380px,92vw);border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5);}
-.promo-popup-bg{position:absolute;inset:0;background-size:cover;background-position:center;}
-.promo-popup-content{position:relative;z-index:2;padding:32px 24px 24px;text-align:center;}
-.promo-popup-close{position:absolute;top:10px;right:12px;z-index:3;background:rgba(0,0,0,0.5);border:none;color:#fff;font-size:16px;cursor:pointer;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;}
-.promo-popup-text{color:#fff;font-size:15px;line-height:1.5;margin-bottom:20px;text-shadow:0 1px 4px rgba(0,0,0,0.6);}
-.promo-popup-cta{background:var(--accent,#d4a84b);color:#000;border:none;border-radius:8px;padding:12px 28px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.05em;text-transform:uppercase;}
 </style>
 </head>
 <body>
@@ -940,7 +925,7 @@ nav.scrolled .nav-signin-btn.admin-active{
   <div class="hero-content">
     <p class="hero-eyebrow" data-en="Mobile Barber · Medellín" data-es="Barbero a Domicilio · Medellín">Mobile Barber · Medellín</p>
     <h1 class="hero-title">MICHAIL</h1>
-    <button onclick="openBookingPopup()" class="book-btn" data-en="BOOK NOW" data-es="RESERVAR">BOOK NOW</button>
+    <a href="#booking" class="book-btn" data-en="BOOK NOW" data-es="RESERVAR">BOOK NOW</a>
   </div>
 </section>
 
@@ -1536,9 +1521,9 @@ const API = {
 
 // ─── DEFAULT SERVICES ───
 const DEFAULT_SERVICES = [
-  { id:'haircut', name:'Haircut', nameEs:'Corte', duration:60, desc:'Fade, taper, classic — your style, your space', descEs:'Fade, taper, clásico — tu estilo, tu espacio', price:150000, badge:'', badgeEs:'' },
-  { id:'haircut_beard', name:'Haircut + Beard', nameEs:'Corte + Barba', duration:90, desc:'Full look. Optional: eyebrow & nose wax.', descEs:'Look completo. Opcional: cejas y nose wax.', price:180000, badge:'MOST POPULAR', badgeEs:'MÁS POPULAR' },
-  { id:'beard', name:'Beard Only', nameEs:'Solo Barba', duration:60, desc:'Shape, trim & line-up. Optional: eyebrow & nose wax.', descEs:'Forma, recorte y perfilado. Opcional: cejas y nose wax.', price:100000, badge:'', badgeEs:'' },
+  { id:'haircut', name:'Haircut', nameEs:'Corte', desc:'Fade, taper, classic — your style, your space', descEs:'Fade, taper, clásico — tu estilo, tu espacio', price:150000, badge:'', badgeEs:'' },
+  { id:'haircut_beard', name:'Haircut + Beard', nameEs:'Corte + Barba', desc:'Full look. Optional: eyebrow & nose wax.', descEs:'Look completo. Opcional: cejas y nose wax.', price:180000, badge:'MOST POPULAR', badgeEs:'MÁS POPULAR' },
+  { id:'beard', name:'Beard Only', nameEs:'Solo Barba', desc:'Shape, trim & line-up. Optional: eyebrow & nose wax.', descEs:'Forma, recorte y perfilado. Opcional: cejas y nose wax.', price:100000, badge:'', badgeEs:'' },
 ];
 
 const DEFAULT_ZONES = ['El Poblado','Laureles','Envigado','Sabaneta','Itagüí','Medellín'];
@@ -1627,7 +1612,7 @@ function selectServiceAndBook(svcId){
   if(sel){ sel.value = svcId; updatePricePreview(); }
   const bookingSection = document.getElementById('booking');
   if(bookingSection){
-    openBookingPopup(svcId); return;
+    bookingSection.scrollIntoView({behavior:'smooth', block:'start'});
     setTimeout(function(){ if(selDate) renderTimeSlots(selDate); }, 400);
   }
 }
@@ -1763,35 +1748,30 @@ function selectDate(ds){
   }
 }
 function renderTimeSlots(ds){
-  var allSlots=[];
-  for(var hr=8;hr<=20;hr++){
-    allSlots.push((hr<10?'0'+hr:''+hr)+':00');
-    if(hr<20) allSlots.push((hr<10?'0'+hr:''+hr)+':30');
-  }
-  var bookings=getBookings(); var blocks=getBlocks(); var blocked={};
-  blocks.filter(function(b){return b.date===ds;}).forEach(function(b){
-    if(b.type==='day'){allSlots.forEach(function(t){blocked[t]=1;});return;}
-    if(b.startTime&&b.endTime) allSlots.forEach(function(t){if(t>=b.startTime&&t<b.endTime)blocked[t]=1;});
+  const allSlots=['05:00','06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00'];
+  const bookings=getBookings(); const blocks=getBlocks();
+  const blocked=new Set();
+  // Block from range blocks
+  blocks.filter(bl=>bl.date===ds&&bl.timeFrom).forEach(bl=>{
+    allSlots.forEach(t=>{ if(t>=bl.timeFrom&&t<=bl.timeTo) blocked.add(t); });
   });
-  var svcId=(document.getElementById('serviceSelect')||{}).value||'haircut';
-  var svcs=getServices(); var svc=null;
-  for(var k=0;k<svcs.length;k++){if(svcs[k].id===svcId){svc=svcs[k];break;}}
-  var svcDur=svc&&svc.duration?svc.duration:60;
-  bookings.filter(function(b){return b.date===ds&&b.status!=='cancelled';}).forEach(function(b){
-    var parts=b.time.split(':'); var bStart=parseInt(parts[0])*60+parseInt(parts[1]);
-    var bSvc=null; for(var k=0;k<svcs.length;k++){if(svcs[k].id===b.service){bSvc=svcs[k];break;}}
-    var bookedDur=bSvc&&bSvc.duration?bSvc.duration:60;
-    var blockFrom=bStart-30; var blockTo=bStart+bookedDur+30;
-    allSlots.forEach(function(t){
-      var tp=t.split(':'); var tMin=parseInt(tp[0])*60+parseInt(tp[1]); var tEnd=tMin+svcDur+30;
-      if((tMin>=blockFrom&&tMin<blockTo)||(tEnd>bStart-30&&tMin<blockTo)) blocked[t]=1;
-    });
+  // Block around existing bookings (buffer)
+  bookings.filter(b=>b.date===ds&&b.status!=='cancelled').forEach(b=>{
+    const bi=allSlots.indexOf(b.time);
+    const g=b.groupSize||1;
+    for(let i=-1;i<=g;i++){ if(bi+i>=0&&bi+i<allSlots.length) blocked.add(allSlots[bi+i]); }
   });
-  document.getElementById('timeSlots').innerHTML=allSlots.map(function(t){
-    var isBl=!!blocked[t];
-    return '<div class="time-slot'+(isBl?' blocked':'')+'"'+(isBl?'':' onclick="selectTime(this.textContent,this)"')+'>'+t+'</div>';
+  const svc=getServices().find(s=>s.id===document.getElementById('serviceSelect').value)||getServices()[0];
+  const base=svc?svc.price:150000;
+  document.getElementById('timeSlots').innerHTML=allSlots.map(t=>{
+    const isB=blocked.has(t);
+    const sc=getSurcharge(t.split(':')[0],base);
+    const isSel=t===selTime;
+    const lbl=sc.flat?'Late':(sc.label||'');
+    return `<div class="time-slot${isB?' blocked':''}${isSel?' selected':''}"${!isB?` onclick="selectTime('${t}')"`:''}>${t}${lbl?`<span class="slot-surcharge">${lbl}</span>`:''}</div>`;
   }).join('');
 }
+function selectTime(t){ selTime=t; window.selectedTime=t; renderTimeSlots(selDate); updatePricePreview(); }
 
 // ─── PRICE PREVIEW ───
 function updatePricePreview(){
@@ -3231,7 +3211,7 @@ function showAdminPage(page, btn){
     dashboard:'Dashboard', calendar:'Calendar', bookings:'Bookings',
     clients:'Clients', services:'Services', more:'More', add:'Add Booking',
     block:'Block Hours', zones:'Zones', affiliates:'Affiliates',
-    subs:'Subscriptions', design:'Design', waitlist:'Waitlist', coupons:'Coupons', promo:'Promo Popup'
+    subs:'Subscriptions', design:'Design', waitlist:'Waitlist', coupons:'Coupons'
   }[page] || page;
   renderAdminPage(page);
 }
@@ -3338,7 +3318,6 @@ function renderAdminPage(page){
     case 'zones': body.innerHTML = buildZonesPage(); break;
     case 'affiliates': body.innerHTML = buildAffiliatesPage(); break;
     case 'subs': body.innerHTML = buildSubsPage(); break;
-    case 'promo': body.innerHTML = buildPromoPopupPage(); break;
     case 'design': body.innerHTML = buildDesignPage(); setTimeout(renderPaletteTab,50); break;
     case 'more': body.innerHTML = buildMorePage(); break;
     case 'waitlist': body.innerHTML = buildWaitlistPage(); break;
@@ -3514,8 +3493,7 @@ function buildMorePage(){
       <div class="quick-action" onclick="showAdminPage('waitlist',null)"><div class="quick-action-icon">⏳</div><div class="quick-action-label">Waitlist</div></div>
       <div class="quick-action" onclick="showAdminPage('coupons',null)"><div class="quick-action-icon">🏷</div><div class="quick-action-label">Coupons</div></div>
       <div class="quick-action" onclick="showAdminPage('subs',null)"><div class="quick-action-icon">◇</div><div class="quick-action-label">Subscriptions</div></div>
-      <div class="quick-action" onclick="showAdminPage('design',null)"><div class="quick-action-icon">◐</div><div class="quick-action-label">Design & Colors</div>
-      <div class="quick-action" onclick="showAdminPage('promo',null)"><div class="quick-action-icon">&#127881;</div><div class="quick-action-label">Promo Popup</div></div></div>
+      <div class="quick-action" onclick="showAdminPage('design',null)"><div class="quick-action-icon">◐</div><div class="quick-action-label">Design & Colors</div></div>
     </div>
     <button class="act-btn danger" style="width:100%;padding:14px;margin-top:16px;" onclick="doSignOut()">SIGN OUT</button>`;
 }
@@ -5057,64 +5035,7 @@ function toggleRecType(){
 
 
 // ─── INIT: Load all data from DB on startup ───
-async // === BOOKING POPUP ===
-function openBookingPopup(prefillSvcId){
-  var overlay=document.getElementById('bookingPopupModal');
-  var inner=document.getElementById('bookingPopupInner');
-  var src=document.getElementById('booking');
-  if(src&&inner){inner.innerHTML='';var cl=src.cloneNode(true);cl.removeAttribute('id');inner.appendChild(cl);}
-  overlay.classList.add('open');
-  document.body.style.overflow='hidden';
-  setTimeout(function(){
-    renderCal();populateServiceSelect();
-    if(prefillSvcId){var sel=document.getElementById('serviceSelect');if(sel){sel.value=prefillSvcId;if(typeof updatePricePreview==='function')updatePricePreview();}}
-  },50);
-}
-function closeBookingPopup(){document.getElementById('bookingPopupModal').classList.remove('open');document.body.style.overflow='';}
-// === PROMO POPUP ===
-var DEFAULT_PROMO={enabled:false,text:'Oferta especial',ctaText:'APLICAR',code:'',bgColor:'#111111',bgOpacity:0.9,position:'center',durationSec:5};
-function getPromoConfig(){return DB.get('promoPopup',DEFAULT_PROMO);}
-function savePromoConfig(cfg){DB.set('promoPopup',cfg);}
-function showPromoPopup(){
-  var cfg=getPromoConfig();if(!cfg.enabled)return;
-  var overlay=document.getElementById('promoPopupOverlay');if(!overlay)return;
-  document.getElementById('promoPopupText').innerHTML=cfg.text||'';
-  var cta=document.getElementById('promoPopupCta');cta.textContent=cfg.ctaText||'APLICAR';cta.setAttribute('data-code',cfg.code||'');
-  var bg=document.getElementById('promoPopupBg');bg.style.background=cfg.bgColor||'#111';bg.style.opacity=cfg.bgOpacity!=null?cfg.bgOpacity:0.9;
-  if(cfg.bgImage){bg.style.backgroundImage='url('+cfg.bgImage+')';bg.style.backgroundSize='cover';}
-  overlay.style.alignItems=cfg.position==='bottom'?'flex-end':cfg.position==='top'?'flex-start':'center';
-  overlay.style.display='flex';
-  if(cfg.durationSec>0)setTimeout(closePromoPopup,cfg.durationSec*1000);
-}
-function closePromoPopup(){var o=document.getElementById('promoPopupOverlay');if(o)o.style.display='none';}
-function applyPromoCode(){
-  var btn=document.getElementById('promoPopupCta');var code=btn?btn.getAttribute('data-code'):'';
-  if(code){var inp=document.getElementById('couponInput');if(inp)inp.value=code;showToast('Codigo: '+code);closePromoPopup();
-  var bp=document.getElementById('bookingPopupModal');if(!bp||!bp.classList.contains('open'))openBookingPopup();}
-}
-function buildPromoPopupPage(){
-  var cfg=getPromoConfig();
-  var h='<div class="admin-section-title">Promo Popup</div><div class="admin-card"><div class="admin-card-inner">';
-  h+='<div class="form-group" style="display:flex;align-items:center;gap:12px"><label class="form-label" style="margin:0">Activar</label><input type="checkbox" id="ppEnabled"'+(cfg.enabled?' checked':'')+'></div>';
-  h+='<div class="form-group"><label class="form-label">Texto</label><textarea id="ppText" class="form-input" rows="3">'+(cfg.text||'')+'</textarea></div>';
-  h+='<div class="form-group"><label class="form-label">Codigo de descuento</label><input type="text" id="ppCode" class="form-input" value="'+(cfg.code||'')+'"></div>';
-  h+='<div class="form-group"><label class="form-label">Texto boton CTA</label><input type="text" id="ppCta" class="form-input" value="'+(cfg.ctaText||'APLICAR')+'"></div>';
-  h+='<div style="display:flex;gap:12px"><div class="form-group" style="flex:1"><label class="form-label">Color fondo</label><input type="color" id="ppColor" class="form-input" value="'+(cfg.bgColor||'#111111')+'" style="height:44px;padding:4px"></div>';
-  h+='<div class="form-group" style="flex:1"><label class="form-label">Opacidad (0-1)</label><input type="number" id="ppOpacity" class="form-input" min="0" max="1" step="0.05" value="'+(cfg.bgOpacity!=null?cfg.bgOpacity:0.9)+'"></div></div>';
-  h+='<div class="form-group"><label class="form-label">URL imagen fondo</label><input type="text" id="ppBgImg" class="form-input" value="'+(cfg.bgImage||'')+'"></div>';
-  h+='<div class="form-group"><label class="form-label">Posicion</label><select id="ppPosition" class="form-select"><option value="center"'+(cfg.position==='center'?' selected':'')+'>Centro</option><option value="bottom"'+(cfg.position==='bottom'?' selected':'')+'>Abajo</option><option value="top"'+(cfg.position==='top'?' selected':'')+'>Arriba</option></select></div>';
-  h+='<div class="form-group"><label class="form-label">Duracion seg (0=no cerrar)</label><input type="number" id="ppDuration" class="form-input" min="0" max="60" value="'+(cfg.durationSec!=null?cfg.durationSec:5)+'"></div>';
-  h+='<div style="display:flex;gap:10px"><button class="act-btn" onclick="savePromoSettings()">GUARDAR</button><button class="act-btn" style="background:var(--gray)" onclick="previewPromoPopup()">PREVIEW</button></div>';
-  h+='</div></div>';return h;
-}
-function savePromoSettings(){
-  var el=function(id){return document.getElementById(id)||{};};
-  savePromoConfig({enabled:!!el('ppEnabled').checked,text:el('ppText').value||'',code:el('ppCode').value||'',ctaText:el('ppCta').value||'APLICAR',bgColor:el('ppColor').value||'#111111',bgOpacity:parseFloat(el('ppOpacity').value)||0.9,bgImage:el('ppBgImg').value||'',position:el('ppPosition').value||'center',durationSec:parseInt(el('ppDuration').value)||5});
-  showToast('Guardado');
-}
-function previewPromoPopup(){savePromoSettings();var cfg=getPromoConfig();cfg.enabled=true;savePromoConfig(cfg);showPromoPopup();}
-
-function initFromDB(){
+async function initFromDB(){
   try {
     const [services, settings, bookings] = await Promise.all([
       API.getServices(), API.getSettings(), API.getBookings()
@@ -5146,7 +5067,6 @@ function initFromDB(){
     }
 
     renderCal();
-    setTimeout(function(){if(!currentUser||!currentUser.isAdmin)showPromoPopup();},2000);
     console.log('DB initialized: ' + allBookings.length + ' bookings loaded');
   } catch(e){
     console.log('DB init failed, using localStorage cache:', e.message);
@@ -5216,22 +5136,5 @@ function initFromDB(){
   </div>
 </div>
 
-
-<div id="bookingPopupModal" onclick="if(event.target===this)closeBookingPopup()">
-  <div class="booking-popup-sheet">
-    <button class="booking-popup-close" onclick="closeBookingPopup()">&#x2715;</button>
-    <div class="booking-popup-inner" id="bookingPopupInner"></div>
-  </div>
-</div>
-<div class="promo-popup-overlay" id="promoPopupOverlay" style="display:none">
-  <div class="promo-popup-box">
-    <button class="promo-popup-close" onclick="closePromoPopup()">&#x2715;</button>
-    <div class="promo-popup-bg" id="promoPopupBg"></div>
-    <div class="promo-popup-content">
-      <div class="promo-popup-text" id="promoPopupText"></div>
-      <button class="promo-popup-cta" id="promoPopupCta" onclick="applyPromoCode()"></button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
