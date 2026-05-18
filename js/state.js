@@ -33,7 +33,7 @@ function renderServicesSection(){
     <div class="service-item reveal" onclick="selectServiceAndBook('${s.id}')" style="cursor:pointer;transition:opacity 0.2s;" onmouseenter="this.style.opacity='0.75'" onmouseleave="this.style.opacity='1'">
       <div style="flex:1;">
         <div class="service-name">${lang==='es'&&s.nameEs?s.nameEs:s.name}</div>
-        <div class="service-desc">${lang==='es'&&s.descEs?s.descEs:s.desc}</div>
+        <div class="service-desc">${lang==='es'&&s.descEs?s.descEs:(s.desc||'')}</div>
         ${s.badge?`<span class="service-badge">${lang==='es'&&s.badgeEs?s.badgeEs:s.badge}</span>`:''}
         <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;margin-top:10px;color:var(--gray);">${bookTxt}</div>
       </div>

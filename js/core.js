@@ -654,6 +654,7 @@ function renderPaletteTab(){
 // ─── ADMIN FULL APP ───
 
 function openAdminApp(){
+  localStorage.setItem('adminWasOpen','1');
   const app = document.getElementById('adminApp');
   const overlay = document.getElementById('adminOverlay');
   if(!app) return;
@@ -668,6 +669,7 @@ function openAdminApp(){
 }
 
 function closeAdminApp(){
+  localStorage.removeItem('adminWasOpen');
   const app = document.getElementById('adminApp');
   const overlay = document.getElementById('adminOverlay');
   if(app){ app.classList.remove('open'); app.style.display='none'; }
@@ -1853,8 +1855,12 @@ initHeroUpload();
   if(!sess) return;
   if(sess.isAdmin){
     currentUser = {name:'Michail González', email:ADMIN_USER, isAdmin:true};
-    document.getElementById('navSignInBtn').textContent = '⚙';
-    document.getElementById('navSignInBtn').title = 'Admin Panel';
+    const navBtn = document.getElementById('navSignInBtn');
+    if(navBtn){ navBtn.textContent = '⚙'; navBtn.title = 'Admin Panel'; }
+    // Reopen admin panel automatically if they were in it
+    if(localStorage.getItem('adminWasOpen') === '1'){
+      openAdminApp();
+    }
     return;
   }
   if(sess.email){

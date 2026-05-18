@@ -79,6 +79,8 @@ async function doSignIn() {
       const data = await res.json();
       if (res.ok && data.token) {
         localStorage.setItem('adminToken', data.token);
+        DB.set('session', {isAdmin: true}); // persist session across reloads
+        currentUser = {name:'Michail González', email:'admin', isAdmin:true};
         closeModal('authModal');
         openAdminApp();
         if (typeof buildAdminPanel === 'function') buildAdminPanel();
@@ -149,4 +151,4 @@ function showForgot(){
     <div style="display:flex;gap:11px;"><button class="modal-btn" onclick="showAuth('signin')">← Back</button><button class="modal-btn primary" onclick="doForgot()">SEND LINK →</button></div>`;
 }
 function doForgot(){ const em=document.getElementById('frEmail').value.trim(); if(!em){alert('Email required');return;} alert(`Reset link sent to ${em}. (Requires EmailJS setup)`); closeModal('authModal'); }
-function doSignOut(){ currentUser=null; document.getElementById('navSignInBtn').textContent=currentLang==='es'?'Ingresar':'Sign In'; closePanel(); closeAdminApp(); }
+function doSignOut(){ currentUser=null; DB.set('session',null); localStorage.removeItem('adminToken'); document.getElementById('navSignInBtn').textContent=currentLang==='es'?'Ingresar':'Sign In'; closePanel(); closeAdminApp(); }
