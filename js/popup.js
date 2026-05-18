@@ -227,6 +227,9 @@ function initFromDB(){
     renderCal();
     setTimeout(()=>{if(!currentUser?.isAdmin)showPromoPopup();},2000);
     applyContentSettings();
+    renderReelsGrid();
+    // Load reels config from DB
+    API.getSettings && API.getSettings().then(function(s){ if(s&&s.reels_config){try{var cfg=JSON.parse(s.reels_config);saveReelsConfig(cfg);renderReelsGrid();}catch(e){}} }).catch(function(){});
     console.log('DB initialized: ' + allBookings.length + ' bookings loaded');
     // Hide page loader
     const loader = document.getElementById('pageLoader');
@@ -240,3 +243,136 @@ function initFromDB(){
   }
 }
 
+
+// ═══════════════════════════════════════
+// REELS / INSTAGRAM GRID
+// ═══════════════════════════════════════
+var DEFAULT_REELS = {
+  handle: 'michailgonzalez',
+  count: 6,
+  urls: ['','','','','','','','','']
+};
+
+function getReelsConfig(){ return DB.get('reelsConfig', DEFAULT_REELS); }
+function saveReelsConfig(cfg){ DB.set('reelsConfig', cfg); API.saveSetting('reels_config', JSON.stringify(cfg)).catch(console.error); }
+
+function getReelEmbedUrl(url){
+  if(!url) return '';
+  // Instagram reel: https://www.instagram.com/reel/XXXXX/
+  var igReel = url.match(/instagram\.com\/reel\/([A-Za-z0-9_-]+)/);
+  if(igReel) return 'https://www.instagram.com/reel/'+igReel[1]+'/embed/';
+  // Instagram post
+  var igPost = url.match(/instagram\.com\/p\/([A-Za-z0-9_-]+)/);
+  if(igPost) return 'https://www.instagram.com/p/'+igPost[1]+'/embed/';
+  // YouTube short or video
+  var yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:shorts\/|watch\?v=))([A-Za-z0-9_-]{11})/);
+  if(yt) return 'https://www.youtube.com/embed/'+yt[1]+'?autoplay=1&mute=1&loop=1&playlist='+yt[1]+'&controls=0';
+  // TikTok
+  var tt = url.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/);
+  if(tt) return 'https://www.tiktok.com/embed/v2/'+tt[1];
+  // Direct mp4
+  if(url.match(/\.(mp4|webm|mov)(\?|$)/i)) return url;
+  return '';
+}
+
+function renderReelsGrid(){
+  var wrap = document.getElementById('reelsGridWrap');
+  if(!wrap) return;
+  var cfg = getReelsConfig();
+  var count = Math.min(Math.max(cfg.count||6, 3), 9);
+  // Force 3-col grid based on count
+  wrap.style.gridTemplateColumns = 'repeat(3,1fr)';
+
+  // Update follow link
+  var link = document.getElementById('instaProfileLink');
+  if(link && cfg.handle){
+    link.href = 'https://www.instagram.com/'+cfg.handle.replace('@','');
+    link.querySelector('span') ? link.querySelector('span').textContent = '@'+cfg.handle.replace('@','') : (link.lastChild.textContent = '@'+cfg.handle.replace('@',''));
+  }
+
+  var cells = '';
+  for(var i=0; i<count; i++){
+    var url = (cfg.urls||[])[i]||'';
+    var embed = getReelEmbedUrl(url);
+    if(embed){
+      if(embed.match(/\.(mp4|webm|mov)(\?|$)/i)){
+        cells += '<div class="reel-cell"><video src="'+embed+'" autoplay muted loop playsinline></video></div>';
+      } else {
+        cells += '<div class="reel-cell"><iframe src="'+embed+'" frameborder="0" allowfullscreen allow="autoplay; fullscreen" loading="lazy" scrolling="no"></iframe></div>';
+      }
+    } else {
+      cells += '<div class="reel-cell empty">+'+(i+1)+'<br>add reel</div>';
+    }
+  }
+  wrap.innerHTML = cells;
+}
+
+function buildReelsAdminPage(){
+  var cfg = getReelsConfig();
+  var count = Math.min(Math.max(cfg.count||6, 3), 9);
+  var h = '<div class="admin-section-title">Instagram / Reels Grid</div>';
+  h += '<div class="admin-card"><div class="admin-card-inner">';
+  h += '<div class="form-group"><label class="form-label">Handle de Instagram</label>';
+  h += '<input type="text" id="reelsHandle" class="form-input" placeholder="michailgonzalez" value="'+(cfg.handle||'')+'" style="max-width:200px"></div>';
+  h += '<div class="form-group"><label class="form-label">Número de videos (3, 6 o 9)</label>';
+  h += '<div style="display:flex;gap:10px">';
+  [3,6,9].forEach(function(n){
+    h += '<button class="act-btn'+(count===n?' selected':'')+'" style="'+(count===n?'background:var(--accent);color:#000;':'background:var(--off);')+'" onclick="setReelCount('+n+',this)">'+n+'</button>';
+  });
+  h += '</div></div>';
+  h += '<div class="form-group"><label class="form-label">URLs de Reels (pega el link de Instagram)</label>';
+  for(var i=0; i<9; i++){
+    h += '<div class="reel-editor-row" style="'+(i>=count?'opacity:0.3;':'')+'">';
+    h += '<span class="reel-editor-num">'+(i+1)+'</span>';
+    h += '<input type="text" id="reelUrl'+i+'" class="form-input" placeholder="https://www.instagram.com/reel/..." value="'+((cfg.urls||[])[i]||'')+'">';
+    if((cfg.urls||[])[i]) h += '<button onclick="clearReel('+i+')" style="background:none;border:none;color:var(--gray);cursor:pointer;font-size:16px;">✕</button>';
+    h += '</div>';
+  }
+  h += '</div>';
+  h += '<div style="display:flex;gap:10px">';
+  h += '<button class="act-btn" onclick="saveReelsSettings()">GUARDAR</button>';
+  h += '<button class="act-btn" style="background:var(--gray)" onclick="previewReels()">PREVIEW</button>';
+  h += '</div></div></div>';
+  return h;
+}
+
+function setReelCount(n, btn){
+  document.querySelectorAll('#adminAppBody .act-btn').forEach(function(b){
+    if(['3','6','9'].includes(b.textContent)){
+      b.style.background='var(--off)'; b.style.color='';
+    }
+  });
+  btn.style.background='var(--accent)'; btn.style.color='#000';
+  btn.setAttribute('data-count', n);
+  // Show/hide rows
+  for(var i=0; i<9; i++){
+    var row = document.querySelector('.reel-editor-row:nth-child('+(i+1)+')');
+    if(row) row.style.opacity = i<n ? '1' : '0.3';
+  }
+  window._reelCount = n;
+}
+
+function clearReel(i){
+  var inp = document.getElementById('reelUrl'+i);
+  if(inp) inp.value = '';
+}
+
+function saveReelsSettings(){
+  var urls = [];
+  for(var i=0; i<9; i++){
+    var el = document.getElementById('reelUrl'+i);
+    urls.push(el ? el.value.trim() : '');
+  }
+  var handle = (document.getElementById('reelsHandle')||{}).value||'';
+  var count = window._reelCount || Math.min(Math.max(parseInt(document.querySelector('[data-count]')?.getAttribute('data-count')||'6'),3),9);
+  var cfg = {handle:handle, count:count, urls:urls};
+  saveReelsConfig(cfg);
+  renderReelsGrid();
+  showToast('Reels guardados ✓');
+}
+
+function previewReels(){
+  saveReelsSettings();
+  var sec = document.getElementById('instaGrid');
+  if(sec) sec.scrollIntoView({behavior:'smooth'});
+}

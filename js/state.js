@@ -200,29 +200,50 @@ function renderTimeSlots(ds){
   }
   const bookings=getBookings(); const blocks=getBlocks();
   const blocked=new Set();
+
+  // ── Block already-passed times + 1hr min advance (today only) ──
+  const now = new Date();
+  const todayStr = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  if(ds === todayStr){
+    const nowMin = now.getHours()*60 + now.getMinutes();
+    const cutoff = nowMin + 60; // minimum 1 hour in advance
+    allSlots.forEach(t=>{
+      const [th,tm]=t.split(':').map(Number);
+      if(th*60+tm <= cutoff) blocked.add(t);
+    });
+  }
+
+  // ── Block from range blocks ──
   blocks.filter(b=>b.date===ds).forEach(b=>{
     if(b.type==='day'){allSlots.forEach(t=>blocked.add(t));return;}
     if(b.startTime&&b.endTime) allSlots.forEach(t=>{if(t>=b.startTime&&t<b.endTime)blocked.add(t);});
   });
+
+  // ── Block around existing bookings: 30min travel before + duration + 30min travel after ──
   const svcId=(document.getElementById('serviceSelect')||{}).value||'haircut';
   const svcs=getServices();
   const svc=svcs.find(s=>s.id===svcId)||svcs[0];
   const svcDur=svc&&svc.duration?svc.duration:60;
+
   bookings.filter(b=>b.date===ds&&b.status!=='cancelled').forEach(b=>{
     const [bh,bm]=b.time.split(':').map(Number);
     const bStart=bh*60+bm;
     const bSvc=svcs.find(s=>s.id===b.service);
     const bookedDur=bSvc&&bSvc.duration?bSvc.duration:60;
-    const blockFrom=bStart-30; const blockTo=bStart+bookedDur+30;
+    // Block: 30min travel before + booked service + 30min travel after
+    const blockFrom=bStart-30;
+    const blockTo=bStart+bookedDur+30;
     allSlots.forEach(t=>{
       const [th,tm]=t.split(':').map(Number);
-      const tMin=th*60+tm; const tEnd=tMin+svcDur+30;
+      const tMin=th*60+tm;
+      const tEnd=tMin+svcDur+30; // new booking duration + 30min travel
       if((tMin>=blockFrom&&tMin<blockTo)||(tEnd>bStart-30&&tMin<blockTo)) blocked.add(t);
     });
   });
+
   document.getElementById('timeSlots').innerHTML=allSlots.map(t=>{
     const isBl=blocked.has(t);
-    return `<div class="time-slot${isBl?' blocked':''}"${isBl?'':` onclick="selectTime('${t}',this)"`}>${t}</div>`;
+    return '<div class="time-slot'+(isBl?' blocked':'')+'"'+(isBl?'':' onclick="selectTime(''+t+'',this)"')+'>'+t+'</div>';
   }).join('');
 }
 
