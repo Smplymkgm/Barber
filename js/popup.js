@@ -77,7 +77,7 @@ function openBookingPopup(prefillSvcId){
 
   setTimeout(()=>{
     renderCal();
-    populateServiceSelect();
+    if(typeof renderServicesSection==="function") renderServicesSection();
     if(prefillSvcId){
       const sel=document.getElementById('serviceSelect');
       if(sel){sel.value=prefillSvcId;if(typeof updatePricePreview==='function')updatePricePreview();}
