@@ -243,8 +243,19 @@ function renderTimeSlots(ds){
 
   document.getElementById('timeSlots').innerHTML=allSlots.map(t=>{
     const isBl=blocked.has(t);
-    return '<div class="time-slot'+(isBl?' blocked':'')+'"'+(isBl?'':' onclick="selectTime(''+t+'',this)"')+'>'+t+'</div>';
+    let d='<div class="time-slot'+(isBl?' blocked':'')+'"';
+    if(!isBl) d+=' onclick="selectTime(this.textContent,this)"';
+    return d+'>'+t+'</div>';
   }).join('');
+}
+
+// ─── SELECT TIME ───
+function selectTime(t, el){
+  selTime = t;
+  window.selectedTime = t;
+  document.querySelectorAll('#timeSlots .time-slot').forEach(function(s){ s.classList.remove('selected'); });
+  if(el) el.classList.add('selected');
+  updatePricePreview();
 }
 
 // ─── PRICE PREVIEW ───
