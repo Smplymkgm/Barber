@@ -16,30 +16,8 @@
 <link rel="stylesheet" href="css/main.css?v=d9b9c4d">
 </head>
 <body>
-<!-- PAGE LOADER -->
-<div id="pageLoader">
-  <div class="page-loader-ring"></div>
-  <div class="page-loader-text">Loading...</div>
+<div class="page-loader-text">Loading...</div>
 </div>
-<script>
-// Hide loader: 1.5s after DOM ready, or 4s max
-(function(){
-  function hideLoader(){
-    var l=document.getElementById('pageLoader');
-    if(!l||l.classList.contains('hidden')) return;
-    l.classList.add('hidden');
-    setTimeout(function(){ if(l) l.classList.add('gone'); }, 450);
-  }
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded', function(){ setTimeout(hideLoader, 1500); });
-  } else {
-    setTimeout(hideLoader, 1500);
-  }
-  setTimeout(hideLoader, 4000);
-  window._hideLoader = hideLoader;
-})();
-</script>
-
 <div class="cal-closed-banner" id="calBanner">Calendar currently closed — contact via WhatsApp</div>
 
 <!-- NAV -->

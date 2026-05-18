@@ -241,12 +241,7 @@ async function initFromDB(){
     // Load reels config from DB
     API.getSettings && API.getSettings().then(function(s){ if(s&&s.reels_config){try{var cfg=JSON.parse(s.reels_config);saveReelsConfig(cfg);renderReelsGrid();}catch(e){}} }).catch(function(){});
     console.log('DB initialized: ' + allBookings.length + ' bookings loaded');
-    // Hide page loader
-    const loader = document.getElementById('pageLoader');
-    if(loader){
-      loader.classList.add('hidden');
-      setTimeout(()=>loader.classList.add('gone'), 450);
-    }
+
   } catch(e){
     console.log('DB init failed, using localStorage cache:', e.message);
     if(!allBookings.length) allBookings = DB.get('bookings', []);
@@ -419,4 +414,3 @@ document.addEventListener('DOMContentLoaded', function(){
     }
   }, 1500);
 });
-// deploy trigger Mon May 18 17:05:12 UTC 2026
