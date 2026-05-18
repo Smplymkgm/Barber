@@ -338,56 +338,102 @@ document.getElementById('addrInput').addEventListener('keydown',e=>{if(e.key==='
 
   function escHtml(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 
-  function fetchSuggestions(q){
-    // Build two URLs: one bounded to Medellín area, one fallback Colombia
-    var lat = userLat || MED_LAT;
-    var lon = userLon || MED_LON;
+  // Known Medellín landmarks not always in OpenStreetMap
+  var LOCAL_LANDMARKS = [
+    {name:'Triangle, El Poblado, Medellín', lat:6.2087, lon:-75.5670},
+    {name:'Wall by Linares, El Poblado, Medellín', lat:6.2101, lon:-75.5680},
+    {name:'Oviedo, El Poblado, Medellín', lat:6.2115, lon:-75.5712},
+    {name:'El Tesoro, El Poblado, Medellín', lat:6.1972, lon:-75.5635},
+    {name:'Santafé, Laureles, Medellín', lat:6.2468, lon:-75.5912},
+    {name:'Los Molinos, Envigado', lat:6.1765, lon:-75.5736},
+    {name:'Mayorca, Sabaneta', lat:6.1512, lon:-75.6145},
+    {name:'Viva Envigado, Envigado', lat:6.1745, lon:-75.5891},
+    {name:'Gran Plaza, Bello', lat:6.3368, lon:-75.5612},
+    {name:'Jardín Plaza, Itagüí', lat:6.1845, lon:-75.5965},
+    {name:'Aquarium, El Poblado, Medellín', lat:6.2098, lon:-75.5688},
+    {name:'Manhattan, Laureles, Medellín', lat:6.2445, lon:-75.5945},
+    {name:'Bello Centro, Bello', lat:6.3385, lon:-75.5598},
+    {name:'Centro Comercial Premium Plaza, Medellín', lat:6.2512, lon:-75.5698},
+    {name:'Unicentro, Medellín', lat:6.2745, lon:-75.5612},
+  ];
 
-    // Primary: bounded search within Medellín viewbox
+  function searchLocalLandmarks(q){
+    var ql = q.toLowerCase().replace(/[^a-záéíóúñ0-9 ]/g,'');
+    return LOCAL_LANDMARKS.filter(function(l){
+      return l.name.toLowerCase().includes(ql);
+    }).map(function(l){
+      return {lat:l.lat, lon:l.lon, display_name:l.name, place_id:'local_'+l.name};
+    });
+  }
+
+  function fetchSuggestions(q){
+    var headers = { 'Accept-Language':'es', 'User-Agent':'MichailBarberApp/1.0' };
+
+    // Check local landmarks first for instant results
+    var localHits = searchLocalLandmarks(q);
+
+    // Tier 1: bounded to Medellín viewbox
     var urlBounded = 'https://nominatim.openstreetmap.org/search'
       + '?q=' + encodeURIComponent(q)
       + '&format=json&countrycodes=co&limit=8'
-      + '&viewbox=' + VIEWBOX
-      + '&bounded=1'
-      + '&addressdetails=1'
-      + '&accept-language=es';
+      + '&viewbox=' + VIEWBOX + '&bounded=1'
+      + '&addressdetails=1&accept-language=es';
 
-    // Secondary: proximity-biased search (not bounded, but sorted by distance from Medellín)
-    var urlProximity = 'https://nominatim.openstreetmap.org/search'
+    // Tier 2: with "Medellín" appended, not bounded
+    var urlMed = 'https://nominatim.openstreetmap.org/search'
       + '?q=' + encodeURIComponent(q + ' Medellín')
       + '&format=json&countrycodes=co&limit=5'
-      + '&addressdetails=1'
-      + '&accept-language=es';
+      + '&addressdetails=1&accept-language=es';
 
-    var headers = { 'Accept-Language':'es', 'User-Agent':'MichailBarberApp/1.0' };
+    // Tier 3: anywhere in Colombia, no restriction
+    var urlCO = 'https://nominatim.openstreetmap.org/search'
+      + '?q=' + encodeURIComponent(q)
+      + '&format=json&countrycodes=co&limit=5'
+      + '&addressdetails=1&accept-language=es';
 
-    fetch(urlBounded, {headers: headers})
+    function dedup(arr){
+      var seen = {};
+      return arr.filter(function(r){
+        if(seen[r.place_id]) return false;
+        seen[r.place_id] = true; return true;
+      });
+    }
+
+    fetch(urlBounded, {headers:headers})
       .then(function(r){ return r.json(); })
-      .then(function(results){
-        if(results && results.length >= 2){
-          renderItems(results.slice(0,5));
-        } else {
-          // Fallback: search with "Medellín" appended
-          return fetch(urlProximity, {headers: headers})
-            .then(function(r){ return r.json(); })
-            .then(function(fallback){
-              var combined = (results||[]).concat(fallback||[]);
-              // Deduplicate by place_id
-              var seen = {};
-              var deduped = combined.filter(function(r){
-                if(seen[r.place_id]) return false;
-                seen[r.place_id] = true;
-                return true;
+      .then(function(r1){
+        // Combine local landmarks + Nominatim bounded results
+        var combined = dedup(localHits.concat(r1||[]));
+        if(combined.length >= 2){ renderItems(combined.slice(0,5)); return; }
+
+        // Tier 2: try with "Medellín" appended
+        return fetch(urlMed, {headers:headers})
+          .then(function(r){ return r.json(); })
+          .then(function(r2){
+            combined = dedup(combined.concat(r2||[]));
+            if(combined.length >= 1){ renderItems(combined.slice(0,5)); return; }
+
+            // Tier 3: anything in Colombia
+            return fetch(urlCO, {headers:headers})
+              .then(function(r){ return r.json(); })
+              .then(function(r3){
+                combined = dedup(combined.concat(r3||[]));
+                renderItems(combined.slice(0,5));
               });
-              renderItems(deduped.slice(0,5));
-            });
-        }
+          });
       })
-      .catch(function(){ closeDropdown(); });
+      .catch(function(){
+        // If Nominatim fails, show local results only
+        if(localHits.length) renderItems(localHits.slice(0,5));
+        else closeDropdown();
+      });
   }
 
   input.addEventListener('input', function(){
     clearTimeout(debounceTimer);
+    // Reset coords when user types manually — must re-select from dropdown
+    window.bookLat = null;
+    window.bookLng = null;
     var q = input.value.trim();
     if(q.length < 3){ closeDropdown(); return; }
     debounceTimer = setTimeout(function(){ fetchSuggestions(q); }, 400);
@@ -434,7 +480,18 @@ function submitBooking(){
   if(!fn||!em||!ph){alert('Please fill name, email and phone.');return;}
   if(!selDate){alert('Please select a date.');return;}
   if(!selTime){alert('Please select a time.');return;}
-  if(!addr){alert('Please enter your address.');return;}
+  if(!addr){alert('Por favor ingresa tu dirección.');return;}
+  // Validate that user picked from dropdown (has coordinates)
+  // If no coords, show warning but allow continue (manual address still accepted)
+  var hasCoords = window.bookLat && window.bookLng;
+  if(!hasCoords){
+    // Check if what they typed looks like just a name (< 5 chars or no street keywords)
+    var looksLikeJustName = addr.length < 8 || (!addr.match(/\d/) && !addr.toLowerCase().match(/calle|carrera|cra|cll|avenida|av\.|transversal|diagonal|edificio|torre|apto|bl|barrio/i));
+    if(looksLikeJustName){
+      var ok = confirm('La dirección "'+addr+'" es muy corta o no tiene número.\n\nTe recomendamos seleccionar una sugerencia del dropdown para mayor precisión.\n\n¿Continuar de todas formas?');
+      if(!ok) return;
+    }
+  }
   if(!selPay){alert('Please select a payment method.');return;}
   const svc=getServices().find(s=>s.id===svcId)||getServices()[0];
   const sc=getSurcharge(selTime.split(':')[0],svc.price);
