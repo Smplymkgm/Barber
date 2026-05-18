@@ -1232,11 +1232,11 @@ function buildDayHeatmap(bks){
   return `<div class="chart-title" style="margin-bottom:10px;">Bookings by Day of Week</div>
     <div class="day-heatmap">
       ${days.map((d,i)=>`<div class="day-heat-cell">
-        <div style="width:100%;height:60px;display:flex;align-items:flex-end;">
-          <div style="width:100%;height:${Math.max(4,Math.round(counts[i]/max*56))}px;background:${counts[i]===max?'var(--black)':'var(--light)'};"></div>
+        <div style="font-family:monospace;font-size:9px;font-weight:700;color:var(--gray);margin-bottom:3px;">${counts[i]}</div>
+        <div style="width:100%;height:48px;display:flex;align-items:flex-end;">
+          <div style="width:100%;height:${Math.max(4,Math.round(counts[i]/max*44))}px;background:${counts[i]===max?'var(--accent,#d4a84b)':'var(--light)'};border-radius:2px 2px 0 0;transition:height 0.3s;"></div>
         </div>
-        <div class="day-heat-lbl">${d}</div>
-        <div style="font-family:monospace;font-size:9px;font-weight:700;">${counts[i]}</div>
+        <div class="day-heat-lbl" style="margin-top:4px;">${d}</div>
       </div>`).join('')}
     </div>`;
 }
