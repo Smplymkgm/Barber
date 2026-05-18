@@ -400,12 +400,22 @@ function previewReels(){
 // Initialize app
 initFromDB();
 
-// Safety net: if loader still visible after 6s, force hide it
+// Safety net: force hide loader after 4s no matter what
 setTimeout(function(){
   const loader = document.getElementById('pageLoader');
   if(loader && !loader.classList.contains('hidden')){
-    console.warn('Loader timeout - forcing hide');
     loader.classList.add('hidden');
-    setTimeout(()=>loader.classList.add('gone'), 450);
+    setTimeout(()=>{ if(loader) loader.classList.add('gone'); }, 450);
   }
-}, 6000);
+}, 4000);
+
+// Hide loader as soon as DOM is interactive (don't wait for DB)
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    const loader = document.getElementById('pageLoader');
+    if(loader && !loader.classList.contains('hidden')){
+      loader.classList.add('hidden');
+      setTimeout(()=>{ if(loader) loader.classList.add('gone'); }, 450);
+    }
+  }, 1500);
+});
