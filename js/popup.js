@@ -250,6 +250,16 @@ async function initFromDB(){
   } catch(e){
     console.log('DB init failed, using localStorage cache:', e.message);
     if(!allBookings.length) allBookings = DB.get('bookings', []);
+    renderCal();
+    applyContentSettings();
+    renderReelsGrid();
+  } finally {
+    // Always hide the loader — even if DB failed
+    const loader = document.getElementById('pageLoader');
+    if(loader){
+      loader.classList.add('hidden');
+      setTimeout(()=>loader.classList.add('gone'), 450);
+    }
   }
 }
 
@@ -389,3 +399,13 @@ function previewReels(){
 
 // Initialize app
 initFromDB();
+
+// Safety net: if loader still visible after 6s, force hide it
+setTimeout(function(){
+  const loader = document.getElementById('pageLoader');
+  if(loader && !loader.classList.contains('hidden')){
+    console.warn('Loader timeout - forcing hide');
+    loader.classList.add('hidden');
+    setTimeout(()=>loader.classList.add('gone'), 450);
+  }
+}, 6000);
