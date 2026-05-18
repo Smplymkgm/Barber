@@ -386,3 +386,6 @@ function previewReels(){
   var sec = document.getElementById('instaGrid');
   if(sec) sec.scrollIntoView({behavior:'smooth'});
 }
+
+// Initialize app
+initFromDB();

@@ -2209,7 +2209,7 @@ function autoCompleteBookings(){
 setInterval(autoCompleteBookings, 5 * 60 * 1000);
 autoCompleteBookings(); // Run on load
 checkBoldRedirect();
-initFromDB();
+// initFromDB() called from popup.js after it loads
 
 // ─── PAY NOW / PAY LATER ───
 function showPaymentChoice(bookingData){
