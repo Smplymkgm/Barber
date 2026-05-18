@@ -686,7 +686,7 @@ function showAdminPage(page, btn){
     dashboard:'Dashboard', calendar:'Calendar', bookings:'Bookings',
     clients:'Clients', services:'Services', more:'More', add:'Add Booking',
     block:'Block Hours', zones:'Zones', affiliates:'Affiliates',
-    subs:'Subscriptions', design:'Design', waitlist:'Waitlist', coupons:'Coupons', promo:'Promo Popup'
+    subs:'Subscriptions', design:'Design', waitlist:'Waitlist', coupons:'Coupons', promo:'Promo Popup', content:'Contenido'
   }[page] || page;
   renderAdminPage(page);
 }
@@ -794,6 +794,7 @@ function renderAdminPage(page){
     case 'affiliates': body.innerHTML = buildAffiliatesPage(); break;
     case 'subs': body.innerHTML = buildSubsPage(); break;
     case 'promo': body.innerHTML = buildPromoPopupPage(); break;
+    case 'content': body.innerHTML = buildContentPage(); break;
     case 'design': body.innerHTML = buildDesignPage(); setTimeout(renderPaletteTab,50); break;
     case 'more': body.innerHTML = buildMorePage(); break;
     case 'waitlist': body.innerHTML = buildWaitlistPage(); break;

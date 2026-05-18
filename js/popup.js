@@ -1,3 +1,64 @@
+function buildContentPage(){
+  var cfg = DB.get('siteContent', {});
+  var fields = [
+    {key:'heroTitle', label:'Hero - Nombre', placeholder:'MICHAIL'},
+    {key:'heroSubtitle', label:'Hero - Subtítulo', placeholder:'Mobile Barber · Medellín'},
+    {key:'heroCta', label:'Botón BOOK NOW', placeholder:'BOOK NOW'},
+    {key:'service1Name', label:'Servicio 1 - Nombre', placeholder:'Haircut'},
+    {key:'service1Desc', label:'Servicio 1 - Descripción', placeholder:'Fade, taper, classic'},
+    {key:'service1Price', label:'Servicio 1 - Precio COP', placeholder:'150000'},
+    {key:'service2Name', label:'Servicio 2 - Nombre', placeholder:'Haircut + Beard'},
+    {key:'service2Price', label:'Servicio 2 - Precio COP', placeholder:'180000'},
+    {key:'service3Name', label:'Servicio 3 - Nombre', placeholder:'Beard Only'},
+    {key:'service3Price', label:'Servicio 3 - Precio COP', placeholder:'100000'},
+    {key:'whatsapp', label:'WhatsApp (números)', placeholder:'573001234567'},
+    {key:'instagram', label:'Instagram URL', placeholder:'https://www.instagram.com/...'},
+    {key:'marqueeText', label:'Marquee texto', placeholder:'Mobile Barber · Medellín · El Poblado'},
+  ];
+  var h = '<div class="admin-section-title">Contenido del Sitio</div>';
+  h += '<p style="font-size:12px;color:var(--gray);margin-bottom:16px;line-height:1.6;">Edita los textos principales.</p>';
+  h += '<div class="admin-card"><div class="admin-card-inner">';
+  fields.forEach(function(f){
+    h += '<div class="form-group"><label class="form-label">'+f.label+'</label>';
+    h += '<input type="text" id="content_'+f.key+'" class="form-input" placeholder="'+f.placeholder+'" value="'+(cfg[f.key]||'')+'"></div>';
+  });
+  h += '<div style="display:flex;gap:10px;">';
+  h += '<button class="act-btn" onclick="saveContentSettings()">GUARDAR</button>';
+  h += '</div></div></div>';
+  return h;
+}
+function saveContentSettings(){
+  var keys = ['heroTitle','heroSubtitle','heroCta','service1Name','service1Desc','service1Price','service2Name','service2Price','service3Name','service3Price','whatsapp','instagram','marqueeText'];
+  var cfg = {};
+  keys.forEach(function(k){ var el=document.getElementById('content_'+k); if(el) cfg[k]=el.value.trim(); });
+  DB.set('siteContent', cfg);
+  API.saveSetting('site_content', JSON.stringify(cfg)).catch(console.error);
+  applyContentSettings(cfg);
+  showToast('Contenido guardado ✓');
+}
+function applyContentSettings(cfg){
+  if(!cfg) cfg = DB.get('siteContent', {});
+  if(!cfg||!Object.keys(cfg).length) return;
+  var heroTitle = document.querySelector('.hero-title');
+  if(heroTitle && cfg.heroTitle) heroTitle.textContent = cfg.heroTitle;
+  var heroCta = document.querySelector('.book-btn');
+  if(heroCta && cfg.heroCta){ heroCta.textContent = cfg.heroCta; heroCta.setAttribute('data-en', cfg.heroCta); }
+  if(cfg.marqueeText){
+    document.querySelectorAll('.marquee-track').forEach(function(m){
+      var items = cfg.marqueeText.split('·').map(function(t){ return '<span>'+t.trim()+'</span>'; }).join('<span class="marquee-dot">·</span>');
+      m.innerHTML = items + items;
+    });
+  }
+  if(cfg.whatsapp){
+    document.querySelectorAll('a[href*="wa.me"], a[href*="whatsapp"]').forEach(function(a){
+      a.href = 'https://wa.me/'+cfg.whatsapp.replace(/\D/g,'');
+    });
+  }
+  if(cfg.instagram){
+    document.querySelectorAll('a[href*="instagram"]').forEach(function(a){ a.href = cfg.instagram; });
+  }
+}
+
 // ─── INIT: Load all data from DB on startup ───
 async // === BOOKING POPUP ===
 function openBookingPopup(prefillSvcId){
@@ -137,6 +198,7 @@ function initFromDB(){
 
     renderCal();
     setTimeout(()=>{if(!currentUser?.isAdmin)showPromoPopup();},2000);
+    applyContentSettings();
     console.log('DB initialized: ' + allBookings.length + ' bookings loaded');
   } catch(e){
     console.log('DB init failed, using localStorage cache:', e.message);
