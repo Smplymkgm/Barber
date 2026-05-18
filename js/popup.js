@@ -90,9 +90,21 @@ function closeBookingPopup(){
 const DEFAULT_PROMO={enabled:false,text:'Oferta especial',ctaText:'APLICAR',code:'',bgColor:'#111111',bgOpacity:0.9,position:'center',durationSec:5};
 function getPromoConfig(){return DB.get('promoPopup',DEFAULT_PROMO);}
 function savePromoConfig(cfg){DB.set('promoPopup',cfg);}
-function showPromoPopup(){
+function showPromoPopup(force){
   const cfg=getPromoConfig();
-  if(!cfg.enabled)return;
+  if(!cfg.enabled) return;
+
+  // Un solo uso por dispositivo — no mostrar si ya lo vio o ya usó el código
+  // force=true solo desde el botón PREVIEW del admin
+  if(!force){
+    const seenKey = 'promoSeen_' + (cfg.code||'default');
+    const alreadySeen = localStorage.getItem(seenKey);
+    if(alreadySeen) return;
+
+    // Tampoco mostrar si el usuario tiene sesión activa (ya es cliente)
+    if(currentUser && !currentUser.isAdmin) return;
+  }
+
   const overlay=document.getElementById('promoPopupOverlay');
   if(!overlay)return;
   document.getElementById('promoPopupText').innerHTML=cfg.text||'';
@@ -106,6 +118,12 @@ function showPromoPopup(){
   overlay.style.alignItems=cfg.position==='bottom'?'flex-end':cfg.position==='top'?'flex-start':'center';
   overlay.style.display='flex';
   if(cfg.durationSec>0)setTimeout(closePromoPopup,cfg.durationSec*1000);
+
+  // Mark as seen immediately so it doesn't show again on this device
+  if(!force){
+    const seenKey = 'promoSeen_' + (cfg.code||'default');
+    localStorage.setItem(seenKey, '1');
+  }
 }
 function closePromoPopup(){
   const o=document.getElementById('promoPopupOverlay');
@@ -117,7 +135,10 @@ function applyPromoCode(){
   if(code){
     const inp=document.getElementById('couponInput');
     if(inp)inp.value=code;
-    showToast('Código: '+code);
+    showToast('Código aplicado: '+code);
+    // Mark as used — won't show again on this device
+    const seenKey = 'promoSeen_' + code;
+    localStorage.setItem(seenKey, 'used');
     closePromoPopup();
     const bp=document.getElementById('bookingPopupModal');
     if(!bp||!bp.classList.contains('open'))openBookingPopup();
@@ -141,7 +162,8 @@ function buildPromoPopupPage(){
   h+='<option value="top"'+(cfg.position==='top'?' selected':'')+'>Arriba</option></select></div>';
   h+='<div class="form-group"><label class="form-label">Duración seg (0=no cerrar)</label><input type="number" id="ppDuration" class="form-input" min="0" max="60" value="'+(cfg.durationSec!=null?cfg.durationSec:5)+'"></div>';
   h+='<div style="display:flex;gap:10px"><button class="act-btn" onclick="savePromoSettings()">GUARDAR</button>';
-  h+='<button class="act-btn" style="background:var(--gray)" onclick="previewPromoPopup()">PREVIEW</button></div>';
+  h+='<button class="act-btn" style="background:var(--gray)" onclick="previewPromoPopup()">PREVIEW</button>'
+  +'<button class="act-btn" style="background:var(--gray)" onclick="resetPromoSeen()">RESETEAR VISTAS</button></div>';
   h+='</div></div>';
   return h;
 }
@@ -160,9 +182,15 @@ function savePromoSettings(){
   });
   showToast('Guardado ✓');
 }
+
+function resetPromoSeen(){
+  // Clear all promoSeen keys so popup shows again to everyone on their next visit
+  Object.keys(localStorage).filter(k=>k.startsWith('promoSeen_')).forEach(k=>localStorage.removeItem(k));
+  showToast('Popup reseteado — se mostrará de nuevo a visitantes');
+}
 function previewPromoPopup(){
   savePromoSettings();
-  const cfg=getPromoConfig();cfg.enabled=true;savePromoConfig(cfg);showPromoPopup();
+  const cfg=getPromoConfig();cfg.enabled=true;savePromoConfig(cfg);showPromoPopup(true);
 }
 
 function initFromDB(){
