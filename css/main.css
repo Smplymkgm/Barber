@@ -7,9 +7,61 @@ html{scroll-behavior:smooth;}
   --surface:#ffffff;--text:#0d0d0d;--accent:#d4a84b;
 }
 @media(prefers-color-scheme:dark){
-  :root{--surface:#0d0d0d;--text:#f5f4f1;--off:#1a1a1a;--light:#2a2a2a;}
+  :root{
+    --surface:#0d0d0d;
+    --text:#f5f4f1;
+    --white:#0d0d0d;
+    --black:#f5f4f1;
+    --off:#1a1a1a;
+    --light:#2a2a2a;
+  }
+  body{background:#0d0d0d;color:#f5f4f1;}
+  .menu-overlay{background:#0d0d0d;}
+  .modal-sheet, .side-panel, .panel-nav, .float-inner,
+  .cal-view-wrap, .week-header, .form-input, .form-select,
+  .form-textarea, .hour-card, .rate-card, .method-card,
+  .modal-btn, .lang-toggle{
+    background:#1a1a1a !important;
+    color:#f5f4f1 !important;
+    border-color:#2a2a2a !important;
+  }
+  .form-input::placeholder, .form-textarea::placeholder{color:#555 !important;}
+  .form-label, .section-title, .section-sub, .section-label{color:#f5f4f1 !important;}
+  .modal-sheet .section-title{color:#f5f4f1 !important;}
+  .hours-block{background:#111 !important;}
+  .hour-card{background:#1a1a1a !important;color:#f5f4f1 !important;}
+  .price-preview{background:#1a1a1a !important;color:#f5f4f1 !important;border-color:#d4a84b !important;}
+  .cov-result{background:#1a1a1a !important;color:#f5f4f1 !important;}
+  .addr-input{background:#1a1a1a !important;color:#f5f4f1 !important;border-color:#f5f4f1 !important;}
+  .sub-card{background:#1a1a1a !important;border-color:#2a2a2a !important;color:#f5f4f1 !important;}
+  .sub-card.featured{background:#1a1a1a !important;border-color:#f5f4f1 !important;}
+  .aff-section{background:#111 !important;}
+  .stat-card{background:#1a1a1a !important;}
+  .grp-btn{background:#1a1a1a !important;color:#f5f4f1 !important;border-color:#2a2a2a !important;}
+  .grp-btn.selected{background:#f5f4f1 !important;color:#0d0d0d !important;}
+  .submit-btn,.act-btn,.modal-btn.primary{background:#f5f4f1 !important;color:#0d0d0d !important;}
+  .submit-btn:active,.act-btn:active{opacity:0.8;}
+  .book-btn{background:#f5f4f1 !important;color:#0d0d0d !important;}
+  .section-label::after,.divider{background:#2a2a2a !important;}
+  nav#mainNav{background:rgba(13,13,13,0.95) !important;}
+  .cal-nav{background:#1a1a1a !important;color:#f5f4f1 !important;}
+  .cal-day{color:#f5f4f1 !important;}
+  .cal-day.selected{background:#d4a84b !important;color:#000 !important;}
+  .cal-day.today{border-color:#d4a84b !important;}
+  .cal-month{color:#f5f4f1 !important;}
+  .month-day-cell:hover{background:#1a1a1a !important;}
+  .month-day-cell.today{background:#1a1a1a !important;}
+  .time-slot{background:#1a1a1a !important;color:#f5f4f1 !important;border-color:#2a2a2a !important;}
+  .time-slot.selected{background:#d4a84b !important;color:#000 !important;}
+  .pay-option{background:#1a1a1a !important;color:#f5f4f1 !important;border-color:#2a2a2a !important;}
+  .pay-option.selected{background:#d4a84b !important;color:#000 !important;border-color:#d4a84b !important;}
+  .pay-option svg, .pay-option .pay-icon{color:#f5f4f1 !important;}
+  .pay-option.selected .pay-icon{color:#000 !important;}
+  .service-item{background:#1a1a1a !important;color:#f5f4f1 !important;}
+  .service-name,.service-price,.service-desc{color:#f5f4f1 !important;}
+  .marquee-track span{color:#f5f4f1 !important;}
 }
-body{background:var(--white);color:var(--black);font-family:'DM Sans',sans-serif;font-weight:300;overflow-x:hidden;}
+body{background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;overflow-x:hidden;}
 
 /* NAV */
 nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content:space-between;align-items:center;padding:20px 24px;transition:background 0.3s;}
