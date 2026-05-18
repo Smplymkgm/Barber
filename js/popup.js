@@ -160,7 +160,7 @@ function buildPromoPopupPage(){
   h+='<option value="center"'+(cfg.position==='center'?' selected':'')+'>Centro</option>';
   h+='<option value="bottom"'+(cfg.position==='bottom'?' selected':'')+'>Abajo</option>';
   h+='<option value="top"'+(cfg.position==='top'?' selected':'')+'>Arriba</option></select></div>';
-  h+='<div class="form-group"><label class="form-label">Duración seg (0=no cerrar)</label><input type="number" id="ppDuration" class="form-input" min="0" max="60" value="'+(cfg.durationSec!=null?cfg.durationSec:5)+'"></div>';
+  h+='<div class="form-group"><label class="form-label">Duración (segundos) — 0 = no se cierra solo</label><input type="number" id="ppDuration" class="form-input" min="0" max="3600" placeholder="5" value="'+(cfg.durationSec!=null?cfg.durationSec:5)+'"></div>';
   h+='<div style="display:flex;gap:10px"><button class="act-btn" onclick="savePromoSettings()">GUARDAR</button>';
   h+='<button class="act-btn" style="background:var(--gray)" onclick="previewPromoPopup()">PREVIEW</button>'
   +'<button class="act-btn" style="background:var(--gray)" onclick="resetPromoSeen()">RESETEAR VISTAS</button></div>';
@@ -178,7 +178,7 @@ function savePromoSettings(){
     bgOpacity:parseFloat(el('ppOpacity').value)||0.9,
     bgImage:el('ppBgImg').value||'',
     position:el('ppPosition').value||'center',
-    durationSec:parseInt(el('ppDuration').value)||5
+    durationSec:el('ppDuration').value!==''?parseInt(el('ppDuration').value):5
   });
   showToast('Guardado ✓');
 }
