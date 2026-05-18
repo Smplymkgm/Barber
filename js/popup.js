@@ -203,7 +203,7 @@ function previewPromoPopup(){
   const cfg=getPromoConfig();cfg.enabled=true;savePromoConfig(cfg);showPromoPopup(true);
 }
 
-function initFromDB(){
+async function initFromDB(){
   try {
     const [services, settings, bookings] = await Promise.all([
       API.getServices(), API.getSettings(), API.getBookings()
