@@ -238,7 +238,17 @@ function updatePricePreview(){
   if(rc){
     const u=getUsers().find(u=>u.code===rc);
     const a=getAffs().find(a=>a.code===rc);
-    if(u&&!currentUser){ total=Math.round(total*0.9); discNote=' · 10% referral discount'; }
+    if(u&&!currentUser){
+      const refs = u.referralCount||u.referral_count||0;
+      // Every 5th referral = 50% discount, otherwise 10%
+      if(refs>0 && refs%5===0){
+        total=Math.round(total*0.5);
+        discNote=' · 🎉 50% off (milestone: '+refs+' referrals!';
+      } else {
+        total=Math.round(total*0.9);
+        discNote=' · 10% referral discount ('+(refs+1)+'/5 → 50% off next)';
+      }
+    }
     if(a) discNote=' · Affiliate code applied';
   }
   const prev=document.getElementById('pricePreview');
@@ -500,7 +510,16 @@ function submitBooking(){
   if(rc){
     const u=getUsers().find(u=>u.code===rc);
     const a=getAffs().find(a=>a.code===rc);
-    if(u){ if(!currentUser){discPct=10;total=Math.round(total*0.9);}else{alert('Referral codes are only valid for new accounts.');return;} }
+    if(u){
+      if(!currentUser){
+        const refs = u.referralCount||u.referral_count||0;
+        if(refs>0 && refs%5===0){
+          discPct=50; total=Math.round(total*0.5);
+        } else {
+          discPct=10; total=Math.round(total*0.9);
+        }
+      } else { alert('Referral codes are only valid for new accounts.'); return; }
+    }
     if(a) affCode=rc;
   }
   const b={id:Date.now().toString(),name:`${fn} ${ln}`.trim(),email:em,phone:ph,service:svcId,serviceName:svc.name,date:selDate,time:selTime,groupSize:selGroup,address:fullAddr||addr,refCode:rc,affiliateCode:affCode,payment:selPay,status:'pending',paymentStatus: (selPay==='card')?'pending':'cash',source:'web',price:window._couponFinalPrice||total,originalPrice:total,couponCode:window._activeCoupon?window._activeCoupon.code:null,couponDiscount:window._couponDiscount||0,discPct,createdAt:new Date().toISOString()};

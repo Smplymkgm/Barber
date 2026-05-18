@@ -732,7 +732,7 @@ async function buildClientsPage(body){
             <span style="font-family:monospace;font-size:9px;padding:3px 8px;background:var(--off);color:var(--gray);">${u.user_type||u.userType||'client'}</span>
           </div>
           <div style="font-family:monospace;font-size:10px;color:var(--gray);margin-bottom:10px;">
-            Code: <strong>${u.code||'—'}</strong> · Bookings: <strong>${bks.length}</strong> · Referrals: <strong>${u.referral_count||u.referralCount||0}</strong>
+            Code: <strong>${u.code||'—'}</strong> · Bookings: <strong>${bks.length}</strong> · Referrals: <strong>${u.referral_count||u.referralCount||0}</strong>${(()=>{const r=u.referral_count||u.referralCount||0; const next=5-(r%5); return r>0&&r%5===0?' 🎉 50% earned!':(next<5?' ('+next+' for 50% off)':'');})()}
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             ${phone?`<a href="https://wa.me/${phone}" target="_blank" class="act-btn" style="text-decoration:none;border-color:var(--green);color:var(--green);">WhatsApp</a>`:''}
