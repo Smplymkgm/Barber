@@ -673,8 +673,18 @@ function closeAdminApp(){
   if(app){ app.classList.remove('open'); app.style.display='none'; }
   if(overlay) overlay.classList.remove('open');
   document.body.style.overflow = '';
+  document.body.style.position = '';
+  // Restore booking section to page if it's stuck in popup
+  const booking = document.getElementById('booking');
+  const anchor = document.getElementById('bookingAnchor');
+  const popupInner = document.getElementById('bookingPopupInner');
+  if(booking && anchor && popupInner && popupInner.contains(booking)){
+    anchor.appendChild(booking);
+    document.getElementById('bookingPopupModal').classList.remove('open');
+  }
   if(currentUser && currentUser.isAdmin){
-    document.getElementById('navSignInBtn').textContent = '⚙';
+    const btn = document.getElementById('navSignInBtn');
+    if(btn) btn.textContent = '⚙';
   }
 }
 
