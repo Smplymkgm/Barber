@@ -291,23 +291,43 @@ document.getElementById('addrInput').addEventListener('keydown',e=>{if(e.key==='
   var debounceTimer = null;
   var activeIdx = -1;
 
+  // Medellín centro: lat 6.2442, lon -75.5812
+  // Viewbox cubre ~50km alrededor del Valle de Aburrá
+  var MED_LAT = 6.2442, MED_LON = -75.5812;
+  var VIEWBOX = '-75.8500,6.0000,-75.2500,6.5000'; // lon_min,lat_min,lon_max,lat_max
+  var userLat = null, userLon = null;
+
+  // Try to get user location for even better results
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(function(pos){
+      userLat = pos.coords.latitude;
+      userLon = pos.coords.longitude;
+    }, function(){}, {timeout:5000});
+  }
+
   function closeDropdown(){
     dropdown.style.display = 'none';
     dropdown.innerHTML = '';
     activeIdx = -1;
   }
 
+  function shortName(displayName){
+    // Show only first 2-3 parts: "Name, Barrio, Medellín" instead of full string
+    var parts = displayName.split(',');
+    return parts.slice(0, 3).join(',').trim();
+  }
+
   function renderItems(results){
     if(!results.length){ closeDropdown(); return; }
     dropdown.innerHTML = results.map(function(r, i){
-      return '<div class="addr-item" data-lat="'+r.lat+'" data-lon="'+r.lon+'" data-idx="'+i+'">'
-        + escHtml(r.display_name)
+      return '<div class="addr-item" data-lat="'+r.lat+'" data-lon="'+r.lon+'" data-idx="'+i+'" title="'+escHtml(r.display_name)+'">'
+        + escHtml(shortName(r.display_name))
         + '</div>';
     }).join('');
     dropdown.style.display = 'block';
     dropdown.querySelectorAll('.addr-item').forEach(function(el){
       el.addEventListener('mousedown', function(e){
-        e.preventDefault(); // keep focus on input
+        e.preventDefault();
         input.value = el.textContent;
         window.bookLat = parseFloat(el.getAttribute('data-lat'));
         window.bookLng = parseFloat(el.getAttribute('data-lon'));
@@ -319,12 +339,51 @@ document.getElementById('addrInput').addEventListener('keydown',e=>{if(e.key==='
   function escHtml(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 
   function fetchSuggestions(q){
-    fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q)+'&format=json&countrycodes=co&limit=5&addressdetails=0', {
-      headers:{ 'Accept-Language':'es', 'User-Agent':'MichailBarberApp/1.0' }
-    })
-    .then(function(r){ return r.json(); })
-    .then(renderItems)
-    .catch(function(){ closeDropdown(); });
+    // Build two URLs: one bounded to Medellín area, one fallback Colombia
+    var lat = userLat || MED_LAT;
+    var lon = userLon || MED_LON;
+
+    // Primary: bounded search within Medellín viewbox
+    var urlBounded = 'https://nominatim.openstreetmap.org/search'
+      + '?q=' + encodeURIComponent(q)
+      + '&format=json&countrycodes=co&limit=8'
+      + '&viewbox=' + VIEWBOX
+      + '&bounded=1'
+      + '&addressdetails=1'
+      + '&accept-language=es';
+
+    // Secondary: proximity-biased search (not bounded, but sorted by distance from Medellín)
+    var urlProximity = 'https://nominatim.openstreetmap.org/search'
+      + '?q=' + encodeURIComponent(q + ' Medellín')
+      + '&format=json&countrycodes=co&limit=5'
+      + '&addressdetails=1'
+      + '&accept-language=es';
+
+    var headers = { 'Accept-Language':'es', 'User-Agent':'MichailBarberApp/1.0' };
+
+    fetch(urlBounded, {headers: headers})
+      .then(function(r){ return r.json(); })
+      .then(function(results){
+        if(results && results.length >= 2){
+          renderItems(results.slice(0,5));
+        } else {
+          // Fallback: search with "Medellín" appended
+          return fetch(urlProximity, {headers: headers})
+            .then(function(r){ return r.json(); })
+            .then(function(fallback){
+              var combined = (results||[]).concat(fallback||[]);
+              // Deduplicate by place_id
+              var seen = {};
+              var deduped = combined.filter(function(r){
+                if(seen[r.place_id]) return false;
+                seen[r.place_id] = true;
+                return true;
+              });
+              renderItems(deduped.slice(0,5));
+            });
+        }
+      })
+      .catch(function(){ closeDropdown(); });
   }
 
   input.addEventListener('input', function(){
