@@ -18,3 +18,9 @@
   for = "/"
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
