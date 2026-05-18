@@ -65,14 +65,16 @@ function openBookingPopup(prefillSvcId){
   const overlay=document.getElementById('bookingPopupModal');
   const inner=document.getElementById('bookingPopupInner');
   const src=document.getElementById('booking');
+
+  // MOVE the real #booking section into the popup (no clone = no duplicate IDs)
   if(src&&inner){
     inner.innerHTML='';
-    const cl=src.cloneNode(true);
-    cl.removeAttribute('id');
-    inner.appendChild(cl);
+    inner.appendChild(src);
   }
+
   overlay.classList.add('open');
   document.body.style.overflow='hidden';
+
   setTimeout(()=>{
     renderCal();
     populateServiceSelect();
@@ -83,7 +85,15 @@ function openBookingPopup(prefillSvcId){
   },50);
 }
 function closeBookingPopup(){
-  document.getElementById('bookingPopupModal').classList.remove('open');
+  // Move #booking back to its original place in the page
+  const overlay=document.getElementById('bookingPopupModal');
+  const inner=document.getElementById('bookingPopupInner');
+  const booking=document.getElementById('booking');
+  const originalParent=document.getElementById('bookingAnchor');
+  if(booking&&originalParent){
+    originalParent.appendChild(booking);
+  }
+  overlay.classList.remove('open');
   document.body.style.overflow='';
 }
 // === PROMO POPUP ===
