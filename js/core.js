@@ -937,20 +937,36 @@ function buildSubsPage(){
 // ── DESIGN ──
 function buildDesignPage(){
   var hasPhoto = !!DB.get('heroPhoto',null);
+  var heroVideoUrl = DB.get('heroVideoUrl','');
   var h = '';
-  h += '<div class="admin-section-title">Hero Photo</div>';
-  if(hasPhoto){
+  h += '<div class="admin-section-title">Hero Media</div>';
+  // Video URL input
+  h += '<div class="form-group">';
+  h += '<label class="form-label">Video URL (YouTube, Vimeo o MP4)</label>';
+  h += '<div style="display:flex;gap:8px;">';
+  h += '<input type="text" id="heroVideoUrlInput" class="form-input" placeholder="https://www.youtube.com/watch?v=..." value="' + (heroVideoUrl||'') + '" style="flex:1">';
+  h += '<button class="act-btn" onclick="saveHeroVideoUrl()">Guardar</button>';
+  h += '</div>';
+  if(heroVideoUrl){
+    h += '<button class="export-btn" onclick="removeHeroVideo()" style="border-color:var(--red);color:var(--red);margin-top:8px;">✕ Quitar video</button>';
+  }
+  h += '<p style="font-size:11px;color:var(--gray);margin-top:6px;">El video reemplaza la foto en el hero. YouTube/Vimeo recomendado.</p>';
+  h += '</div>';
+  // Photo upload
+  h += '<div class="form-group">';
+  if(hasPhoto && !heroVideoUrl){
     h += '<img id="heroPrev" class="hero-preview show" src="' + DB.get('heroPhoto','') + '">';
-    h += '<div style="display:flex;gap:8px;margin-bottom:24px;">';
-    h += '<button class="export-btn" onclick="document.getElementById(&quot;heroFileInput&quot;).click()">📷 Change Photo</button>';
-    h += '<button class="export-btn" onclick="removeHeroPhoto()" style="border-color:var(--red);color:var(--red);">Remove</button>';
+    h += '<div style="display:flex;gap:8px;margin-bottom:8px;">';
+    h += '<button class="export-btn" onclick="document.getElementById(&quot;heroFileInput&quot;).click()">📷 Cambiar Foto</button>';
+    h += '<button class="export-btn" onclick="removeHeroPhoto()" style="border-color:var(--red);color:var(--red);">Quitar</button>';
     h += '</div>';
-  } else {
-    h += '<div class="hero-placeholder-preview" onclick="document.getElementById(&quot;heroFileInput&quot;).click()"><p>Tap to upload photo</p></div>';
-    h += '<div style="display:flex;gap:8px;margin-bottom:24px;">';
-    h += '<button class="export-btn" onclick="document.getElementById(&quot;heroFileInput&quot;).click()">📷 Upload Photo</button>';
+  } else if(!heroVideoUrl){
+    h += '<div class="hero-placeholder-preview" onclick="document.getElementById(&quot;heroFileInput&quot;).click()"><p>Tap para subir foto</p></div>';
+    h += '<div style="display:flex;gap:8px;margin-bottom:8px;">';
+    h += '<button class="export-btn" onclick="document.getElementById(&quot;heroFileInput&quot;).click()">📷 Subir Foto (máx 5MB)</button>';
     h += '</div>';
   }
+  h += '</div>';
   h += '<input type="file" id="heroFileInput" accept="image/*" style="display:none;" onchange="handleHeroUpload(this)">';
   h += '<div class="admin-section-title">Color Palette</div>';
   h += '<p style="font-size:13px;color:var(--gray);margin-bottom:16px;line-height:1.6;">Choose a palette. Updates the entire site instantly.</p>';
@@ -1447,14 +1463,79 @@ function _applyHeroPhoto(src){
   img.onerror=function(){ img.style.display='none'; if(hint) hint.style.display=''; };
 }
 
+function _getEmbedUrl(url){
+  if(!url) return '';
+  // YouTube
+  var ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if(ytMatch) return 'https://www.youtube.com/embed/'+ytMatch[1]+'?autoplay=1&mute=1&loop=1&playlist='+ytMatch[1]+'&controls=0&showinfo=0&rel=0';
+  // Vimeo
+  var vmMatch = url.match(/vimeo\.com\/(\d+)/);
+  if(vmMatch) return 'https://player.vimeo.com/video/'+vmMatch[1]+'?autoplay=1&muted=1&loop=1&background=1';
+  // Direct MP4 or other
+  return url;
+}
+
+function _applyHeroVideo(url){
+  const iframe=document.getElementById('heroVideoEmbed');
+  const img=document.getElementById('heroImg');
+  const hint=document.getElementById('heroPhotoHint');
+  if(!iframe) return;
+  const embedUrl=_getEmbedUrl(url);
+  if(embedUrl){
+    iframe.src=embedUrl;
+    iframe.style.display='block';
+    if(img) img.style.display='none';
+    if(hint) hint.style.display='none';
+  }
+}
+
+function saveHeroVideoUrl(){
+  const inp=document.getElementById('heroVideoUrlInput');
+  const url=(inp?inp.value:'').trim();
+  DB.set('heroVideoUrl', url);
+  API.saveSetting('hero_video_url', url).catch(console.error);
+  if(url){
+    _applyHeroVideo(url);
+    // clear photo display
+    const img=document.getElementById('heroImg');
+    if(img) img.style.display='none';
+  } else {
+    // restore photo if exists
+    const stored=DB.get('heroPhoto',null);
+    if(stored) _applyHeroPhoto(stored);
+    const iframe=document.getElementById('heroVideoEmbed');
+    if(iframe){ iframe.src=''; iframe.style.display='none'; }
+  }
+  showToast(url ? '✓ Video guardado' : '✓ Video eliminado');
+  renderAdminPage('design');
+}
+
+function removeHeroVideo(){
+  DB.set('heroVideoUrl','');
+  API.saveSetting('hero_video_url','').catch(console.error);
+  const iframe=document.getElementById('heroVideoEmbed');
+  if(iframe){ iframe.src=''; iframe.style.display='none'; }
+  // Restore photo if exists
+  const stored=DB.get('heroPhoto',null);
+  if(stored) _applyHeroPhoto(stored);
+  showToast('✓ Video eliminado');
+  renderAdminPage('design');
+}
+
 function initHeroUpload(){
   try {
+    // Video URL takes priority over photo
+    const storedVideo=DB.get('heroVideoUrl','');
+    if(storedVideo){ _applyHeroVideo(storedVideo); return; }
     const stored=DB.get('heroPhoto',null);
     if(stored){ _applyHeroPhoto(stored); return; }
     // Not in localStorage — try DB settings (visible to all visitors)
     fetch('/.netlify/functions/data?type=settings')
       .then(r=>r.ok?r.json():null)
-      .then(s=>{ if(s&&s.hero_photo) _applyHeroPhoto(s.hero_photo); })
+      .then(s=>{
+        if(s&&s.hero_video_url){ DB.set('heroVideoUrl',s.hero_video_url); _applyHeroVideo(s.hero_video_url); }
+        else if(s&&s.hero_photo){ _applyHeroPhoto(s.hero_photo); }
+      })
       .catch(()=>{});
   } catch(e){}
 }
@@ -1464,8 +1545,8 @@ function handleHeroUpload(input){
   const file=input.files[0];
   const sizeMB=(file.size/(1024*1024)).toFixed(1);
 
-  if(file.size > 500 * 1024){
-    alert('La foto pesa '+sizeMB+'MB. El límite es 500KB para garantizar carga rápida. Comprime la imagen antes de subir.');
+  if(file.size > 5 * 1024 * 1024){
+    alert('La foto pesa '+sizeMB+'MB. El límite es 5MB. Comprime la imagen antes de subir.');
     return;
   }
 
