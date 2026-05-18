@@ -97,7 +97,7 @@ function closeBookingPopup(){
   document.body.style.overflow='';
 }
 // === PROMO POPUP ===
-const DEFAULT_PROMO={enabled:false,text:'Oferta especial',ctaText:'APLICAR',code:'',bgColor:'#111111',bgOpacity:0.9,position:'center',durationSec:5};
+var DEFAULT_PROMO={enabled:false,text:'Oferta especial',ctaText:'APLICAR',code:'',bgColor:'#111111',bgOpacity:0.9,position:'center',durationSec:5};
 function getPromoConfig(){return DB.get('promoPopup',DEFAULT_PROMO);}
 function savePromoConfig(cfg){DB.set('promoPopup',cfg);}
 function showPromoPopup(force){

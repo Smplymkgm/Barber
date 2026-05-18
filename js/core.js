@@ -993,19 +993,27 @@ function buildDesignPage(){
 
 // ── MORE ──
 function buildMorePage(){
-  return `<div class="admin-section-title">More</div>
-    <div class="quick-actions" style="grid-template-columns:1fr;">
-      <div class="quick-action" onclick="showAdminPage('add',null)"><div class="quick-action-icon">＋</div><div class="quick-action-label">Add Manual Booking</div></div>
-      <div class="quick-action" onclick="showAdminPage('block',null)"><div class="quick-action-icon">⊗</div><div class="quick-action-label">Block Hours</div></div>
-      <div class="quick-action" onclick="showAdminPage('zones',null)"><div class="quick-action-icon">◎</div><div class="quick-action-label">Coverage Zones</div></div>
-      <div class="quick-action" onclick="showAdminPage('affiliates',null)"><div class="quick-action-icon">◈</div><div class="quick-action-label">Affiliates</div></div>
-      <div class="quick-action" onclick="showAdminPage('waitlist',null)"><div class="quick-action-icon">⏳</div><div class="quick-action-label">Waitlist</div></div>
-      <div class="quick-action" onclick="showAdminPage('coupons',null)"><div class="quick-action-icon">🏷</div><div class="quick-action-label">Coupons</div></div>
-      <div class="quick-action" onclick="showAdminPage('subs',null)"><div class="quick-action-icon">◇</div><div class="quick-action-label">Subscriptions</div></div>
-      <div class="quick-action" onclick="showAdminPage('design',null)"><div class="quick-action-icon">◐</div><div class="quick-action-label">Design & Colors</div>
-      <div class="quick-action" onclick="showAdminPage('promo',null)"><div class="quick-action-icon">🎉</div><div class="quick-action-label">Promo Popup</div></div></div>
-    </div>
-    <button class="act-btn danger" style="width:100%;padding:14px;margin-top:16px;" onclick="doSignOut()">SIGN OUT</button>`;
+  var items = [
+    {page:'add',    icon:'＋',  label:'Add Manual Booking'},
+    {page:'block',  icon:'⊗',  label:'Block Hours'},
+    {page:'zones',  icon:'◎',  label:'Coverage Zones'},
+    {page:'affiliates',icon:'◈',label:'Affiliates'},
+    {page:'waitlist',icon:'⏳', label:'Waitlist'},
+    {page:'coupons',icon:'🏷', label:'Coupons'},
+    {page:'subs',   icon:'◇',  label:'Subscriptions'},
+    {page:'design', icon:'◐',  label:'Design & Colors'},
+    {page:'promo',  icon:'🎉', label:'Promo Popup'},
+    {page:'reels',  icon:'📸', label:'Instagram / Reels'},
+    {page:'content',icon:'✏️', label:'Contenido'},
+  ];
+  var h = '<div class="admin-section-title">More</div><div class="quick-actions" style="grid-template-columns:1fr;">';
+  items.forEach(function(item){
+    h += '<div class="quick-action" onclick="showAdminPage(\'' + item.page + '\',null)">'
+      + '<div class="quick-action-icon">' + item.icon + '</div>'
+      + '<div class="quick-action-label">' + item.label + '</div></div>';
+  });
+  h += '</div><button class="act-btn danger" style="width:100%;padding:14px;margin-top:16px;" onclick="doSignOut()">SIGN OUT</button>';
+  return h;
 }
 
 
