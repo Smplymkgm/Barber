@@ -270,9 +270,10 @@ function saveReelsConfig(cfg){ DB.set('reelsConfig',cfg); API.saveSetting('reels
 function getReelEmbedUrl(url){
   if(!url) return '';
   var igReel = url.match(/instagram\.com\/reel\/([A-Za-z0-9_-]+)/);
-  if(igReel) return 'https://www.instagram.com/reel/'+igReel[1]+'/embed/?cr=1&v=14&wp=540';
+  // hidecaption=1 removes profile header and footer from Instagram embeds
+  if(igReel) return 'https://www.instagram.com/reel/'+igReel[1]+'/embed/captioned/?cr=1&v=14&wp=540&rd=https%3A%2F%2Fmoonlit-druid-d06398.netlify.app';
   var igPost = url.match(/instagram\.com\/p\/([A-Za-z0-9_-]+)/);
-  if(igPost) return 'https://www.instagram.com/p/'+igPost[1]+'/embed/';
+  if(igPost) return 'https://www.instagram.com/p/'+igPost[1]+'/embed/captioned/';
   var yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:shorts\/|watch\?v=))([A-Za-z0-9_-]{11})/);
   if(yt) return 'https://www.youtube.com/embed/'+yt[1]+'?autoplay=1&mute=1&loop=1&playlist='+yt[1]+'&controls=0';
   var tt = url.match(/tiktok\.com\/@[^\/]+\/video\/(\d+)/);
@@ -299,10 +300,12 @@ function renderReelsGrid(){
     if(span) span.textContent = '@'+handle;
   }
   
-  // Hide section if no urls
+  // Show section if has handle or urls
+  var hasHandle = cfg.handle && cfg.handle.replace('@','').length > 0;
   if(!urls.length){
-    if(section) section.style.display = 'none';
     wrap.innerHTML = '';
+    // Still show section with just the follow button if handle exists
+    if(section) section.style.display = hasHandle ? '' : 'none';
     return;
   }
   if(section) section.style.display = '';
@@ -314,8 +317,8 @@ function renderReelsGrid(){
     wrap.style.cssText = 'display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:8px;';
     wrap.innerHTML = items.map(function(url){
       var embed = getReelEmbedUrl(url);
-      return '<div style="flex:0 0 calc(33.333% - 6px);min-width:140px;aspect-ratio:9/16;background:#111;border-radius:8px;overflow:hidden;scroll-snap-align:start;">'
-        + '<iframe src="'+embed+'" frameborder="0" allowfullscreen allow="autoplay;fullscreen" loading="lazy" scrolling="no" style="width:100%;height:100%;border:none;pointer-events:none;"></iframe>'
+      return '<div style="position:relative;flex:0 0 calc(33.333% - 6px);min-width:140px;aspect-ratio:9/16;background:#111;border-radius:8px;overflow:hidden;scroll-snap-align:start;">'
+        + '<iframe src="'+embed+'" frameborder="0" allowfullscreen allow="autoplay;fullscreen" loading="lazy" scrolling="no" style="width:100%;height:120%;border:none;pointer-events:none;margin-top:-56px;"></iframe>'
         + '</div>';
     }).join('');
   } else if(layout === 'stack'){
@@ -333,8 +336,8 @@ function renderReelsGrid(){
     wrap.style.cssText = 'display:grid;grid-template-columns:repeat('+cols+',1fr);gap:4px;width:100%;max-width:480px;margin:0 auto;';
     wrap.innerHTML = items.map(function(url){
       var embed = getReelEmbedUrl(url);
-      return '<div style="aspect-ratio:9/16;background:#111;border-radius:3px;overflow:hidden;">'
-        + '<iframe src="'+embed+'" frameborder="0" allowfullscreen allow="autoplay;fullscreen" loading="lazy" scrolling="no" style="width:100%;height:100%;border:none;pointer-events:none;"></iframe>'
+      return '<div style="position:relative;aspect-ratio:9/16;background:#111;border-radius:3px;overflow:hidden;">'
+        + '<iframe src="'+embed+'" frameborder="0" allowfullscreen allow="autoplay;fullscreen" loading="lazy" scrolling="no" style="width:100%;height:120%;border:none;pointer-events:none;margin-top:-56px;"></iframe>'
         + '</div>';
     }).join('');
   }

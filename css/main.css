@@ -60,6 +60,15 @@ html{scroll-behavior:smooth;}
   .service-item{background:#1a1a1a !important;color:#f5f4f1 !important;}
   .service-name,.service-price,.service-desc{color:#f5f4f1 !important;}
   .marquee-track span{color:#f5f4f1 !important;}
+  /* Subscriptions dark mode */
+  .sub-section{background:#0d0d0d !important;}
+  .sub-card{background:#1a1a1a !important;border-color:#2a2a2a !important;color:#f5f4f1 !important;}
+  .sub-card.featured{background:#1a1a1a !important;border-color:#f5f4f1 !important;}
+  .sub-card-name,.sub-card-desc,.sub-card-freq,.sub-card-cycle{color:#f5f4f1 !important;}
+  .sub-card-price{color:#f5f4f1 !important;}
+  .sub-badge{background:#f5f4f1 !important;color:#0d0d0d !important;}
+  .sub-spots{color:#d4a84b !important;}
+  .sub-btn{background:#f5f4f1 !important;color:#0d0d0d !important;}
 }
 body{background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;overflow-x:hidden;}
 
@@ -1047,7 +1056,7 @@ nav.scrolled .nav-signin-btn.admin-active{
 .reel-cell .reel-play svg{width:36px;height:36px;fill:#fff;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));}
 .reel-cell:hover .reel-play{opacity:0;}
 .reel-cell video:hover{cursor:pointer;}
-.insta-follow-btn{display:inline-flex;align-items:center;gap:8px;margin:0 auto;padding:12px 24px;border:1.5px solid var(--text);color:var(--text);text-decoration:none;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;transition:all 0.2s;}
+.insta-follow-btn{display:inline-flex;align-items:center;gap:8px;margin:0 auto;padding:12px 24px;border:1.5px solid var(--text);color:var(--text);text-decoration:none;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.08em;text-transform:none;transition:all 0.2s;}
 .insta-follow-btn:hover{background:var(--text);color:var(--surface);}
 #instaGrid{text-align:center;}
 /* ═══ ADMIN REELS EDITOR ═══ */
