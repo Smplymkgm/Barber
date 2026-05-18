@@ -1468,7 +1468,9 @@ function exportPDFReport(){
   h += 'th{text-align:left;padding:8px;background:#f5f4f1;font-size:9px;letter-spacing:.1em;}';
   h += 'td{padding:8px;border-bottom:1px solid #f0f0f0;}';
   h += 'footer{margin-top:32px;font-size:9px;color:#8a8a8a;text-align:center;border-top:1px solid #e8e6e0;padding-top:16px;}';
-  // removed broken line
+  return h;
+}
+
 // ─── HERO PHOTO UPLOAD ───
 function _applyHeroPhoto(src){
   const img=document.getElementById('heroImg');
@@ -1832,7 +1834,6 @@ document.addEventListener('click', function(e){
 });
 
 
-}
 
 // Apply saved palette on load
 applyPalette(activePalette);
