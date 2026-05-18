@@ -98,7 +98,7 @@ function closeBookingPopup(){
 }
 // === PROMO POPUP ===
 var DEFAULT_PROMO={enabled:false,text:'Oferta especial',ctaText:'APLICAR',code:'',bgColor:'#111111',bgOpacity:0.9,position:'center',durationSec:5};
-function getPromoConfig(){return DB.get('promoPopup',DEFAULT_PROMO);}
+function getPromoConfig(){ var d=DEFAULT_PROMO||{enabled:false,text:'Oferta especial',ctaText:'APLICAR',code:'',bgColor:'#111111',bgOpacity:0.9,position:'center',durationSec:5}; return DB.get('promoPopup',d)||d; }
 function savePromoConfig(cfg){DB.set('promoPopup',cfg);}
 function showPromoPopup(force){
   const cfg=getPromoConfig();
@@ -264,7 +264,7 @@ async function initFromDB(){
 // REELS / INSTAGRAM GRID
 // ═══════════════════════════════════════
 var DEFAULT_REELS = { handle:'michailgonzalez', count:6, layout:'grid', urls:['','','','','','','','',''] };
-function getReelsConfig(){ return DB.get('reelsConfig', DEFAULT_REELS); }
+function getReelsConfig(){ var d=DEFAULT_REELS||{handle:'michailgonzalez',count:6,layout:'grid',urls:['','','','','','','','','']}; return DB.get('reelsConfig',d)||d; }
 function saveReelsConfig(cfg){ DB.set('reelsConfig',cfg); API.saveSetting('reels_config',JSON.stringify(cfg)).catch(console.error); }
 
 function getReelEmbedUrl(url){
