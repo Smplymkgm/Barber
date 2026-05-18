@@ -318,7 +318,7 @@ async function submitBookingAnimated(){
     date: selDate, time: selTime, groupSize: selGroup,
     address: fullAddr, refCode: rc, affiliateCode: affCode,
     payment: selPay, status: 'pending',
-    paymentStatus: (selPay==='card'||selPay==='link') ? 'pending' : 'cash',
+    paymentStatus: selPay==='card' ? 'pending' : 'cash',
     source: 'web',
     price: window._couponFinalPrice || total,
     originalPrice: total,
@@ -407,7 +407,7 @@ async function submitBookingAnimated(){
     document.getElementById('tmNequi').textContent = BANK_NEQUI;
     showModal('transferModal');
 
-  } else if(payMethod === 'card' || payMethod === 'link'){
+  } else if(payMethod === 'card'){
     btn.querySelector('.submit-text').textContent = currentLang==='es' ? 'Redirigiendo...' : 'Redirecting...';
     // Show full-screen spinner while Bold signature fetch runs
     var boldSpinner = document.createElement('div');

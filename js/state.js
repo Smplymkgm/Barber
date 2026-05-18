@@ -503,12 +503,12 @@ function submitBooking(){
     if(u){ if(!currentUser){discPct=10;total=Math.round(total*0.9);}else{alert('Referral codes are only valid for new accounts.');return;} }
     if(a) affCode=rc;
   }
-  const b={id:Date.now().toString(),name:`${fn} ${ln}`.trim(),email:em,phone:ph,service:svcId,serviceName:svc.name,date:selDate,time:selTime,groupSize:selGroup,address:fullAddr||addr,refCode:rc,affiliateCode:affCode,payment:selPay,status:'pending',paymentStatus: (selPay==='card'||selPay==='link')?'pending':'cash',source:'web',price:window._couponFinalPrice||total,originalPrice:total,couponCode:window._activeCoupon?window._activeCoupon.code:null,couponDiscount:window._couponDiscount||0,discPct,createdAt:new Date().toISOString()};
+  const b={id:Date.now().toString(),name:`${fn} ${ln}`.trim(),email:em,phone:ph,service:svcId,serviceName:svc.name,date:selDate,time:selTime,groupSize:selGroup,address:fullAddr||addr,refCode:rc,affiliateCode:affCode,payment:selPay,status:'pending',paymentStatus: (selPay==='card')?'pending':'cash',source:'web',price:window._couponFinalPrice||total,originalPrice:total,couponCode:window._activeCoupon?window._activeCoupon.code:null,couponDiscount:window._couponDiscount||0,discPct,createdAt:new Date().toISOString()};
   allBookings.push(b); curBookingData=b;
   // Persist to DB (non-blocking — UI responds immediately)
   API.saveBooking(b).then(ok=>{ if(!ok) console.warn('Booking not synced to DB, id='+b.id); }).catch(console.error);
   let boldSection = '';
-  if(selPay==='card'||selPay==='link'){
+  if(selPay==='card'){
     boldSection = '\n\nTo pay by card, a payment link will be sent to your WhatsApp.';
     // Load Bold button dynamically to avoid script tag conflict
     setTimeout(()=>{
@@ -531,7 +531,7 @@ function submitBooking(){
   var boldSec = document.getElementById('boldPaySection');
   var boldBtn2 = document.getElementById('boldPayNowBtn');
   if(boldSec && boldBtn2){
-    if(selPay==='card'||selPay==='link'){
+    if(selPay==='card'){
       boldSec.style.display='block';
       boldBtn2.onclick = function(){
         closeModal('confirmModal');
@@ -543,7 +543,7 @@ function submitBooking(){
   // Show Bold pay button if card/link selected
   const boldBtn = document.getElementById('boldPayBtn');
   if(boldBtn){
-    if(selPay==='card'||selPay==='link'){
+    if(selPay==='card'){
       boldBtn.style.display='block';
       boldBtn.setAttribute('data-amount', total);
       boldBtn.setAttribute('data-order', b.id);

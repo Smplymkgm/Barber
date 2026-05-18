@@ -88,7 +88,7 @@ function buildAdminBkList(bks){
     if(ps==='paid') return '<span style="font-family:monospace;font-size:8px;padding:2px 6px;background:#d1e7dd;color:#0f5132;">PAID</span>';
     if(pm==='cash') return '<span style="font-family:monospace;font-size:8px;padding:2px 6px;background:#f5f4f1;color:#888;">CASH</span>';
     if(pm==='transfer') return '<span style="font-family:monospace;font-size:8px;padding:2px 6px;background:#fff3cd;color:#856404;">TRANSFER</span>';
-    if(pm==='card'||pm==='link') return '<span style="font-family:monospace;font-size:8px;padding:2px 6px;background:#cfe2ff;color:#084298;">CARD</span>';
+    if(pm==='card') return '<span style="font-family:monospace;font-size:8px;padding:2px 6px;background:#cfe2ff;color:#084298;">CARD</span>';
     return '<span style="font-family:monospace;font-size:8px;padding:2px 6px;background:#fff3cd;color:#856404;">PAY PENDING</span>';
   };
   const waLink=b=>b.phone?`<a href="https://wa.me/${b.phone.replace(/\D/g,'')}" target="_blank" class="act-btn" style="text-decoration:none;">WhatsApp</a>`:'';
