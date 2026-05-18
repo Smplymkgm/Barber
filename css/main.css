@@ -60,14 +60,7 @@ html{scroll-behavior:smooth;}
   .service-item{background:#1a1a1a !important;color:#f5f4f1 !important;}
   .service-name,.service-price,.service-desc{color:#f5f4f1 !important;}
   .marquee-track span{color:#f5f4f1 !important;}
-  /* Referral section - always dark */
-  .ref-section{background:#0d0d0d !important;color:#f5f4f1 !important;}
-  .ref-num{color:rgba(255,255,255,0.2) !important;}
-  .ref-title,.ref-desc,.ref-reward{color:#f5f4f1 !important;}
-  .ref-level{border-color:rgba(255,255,255,0.08) !important;}
-  .progress-box{background:rgba(255,255,255,0.04) !important;border-color:rgba(255,255,255,0.08) !important;}
-  .progress-lbl,.progress-markers .pm{color:rgba(255,255,255,0.5) !important;}
-  .progress-bar-wrap{background:rgba(255,255,255,0.08) !important;}
+
   /* Subscriptions dark mode */
   .sub-section{background:#0d0d0d !important;}
   .sub-card{background:#1a1a1a !important;border-color:#2a2a2a !important;color:#f5f4f1 !important;}
@@ -246,20 +239,20 @@ nav.scrolled .nav-menu-btn span{background:var(--black);}
 .sub-slots{font-family:'Space Mono',monospace;font-size:10px;color:var(--red);margin-top:5px;letter-spacing:0.04em;}
 
 /* REFERRAL */
-.ref-section{background:#0d0d0d;color:#f5f4f1;padding:72px 24px;}
-.ref-section .section-label{color:rgba(255,255,255,0.35);}
-.ref-section .section-label::after{background:rgba(255,255,255,0.1);}
+.ref-section{background:var(--surface);color:var(--text);padding:72px 24px;}
+.ref-section .section-label{color:var(--gray);}
+.ref-section .section-label::after{background:var(--light);}
 .ref-levels{display:flex;flex-direction:column;}
-.ref-level{display:flex;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid rgba(255,255,255,0.08);}
-.ref-num{font-family:'Bebas Neue',sans-serif;font-size:32px;color:rgba(255,255,255,0.18);width:32px;flex-shrink:0;line-height:1;}
+.ref-level{display:flex;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid var(--light);}
+.ref-num{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--light);width:32px;flex-shrink:0;line-height:1;}
 .ref-info{flex:1;}
-.ref-title{font-size:13px;font-weight:500;letter-spacing:0.04em;margin-bottom:2px;}
-.ref-desc{font-size:11px;color:rgba(255,255,255,0.38);letter-spacing:0.04em;}
-.ref-reward{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:rgba(255,255,255,0.78);text-align:right;}
-.progress-box{margin-top:28px;padding:20px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);}
-.progress-lbl{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:12px;}
-.progress-bar-wrap{background:rgba(255,255,255,0.08);height:3px;margin-bottom:9px;}
-.progress-bar-fill{height:100%;background:var(--white);width:0%;transition:width 1.2s ease;}
+.ref-title{font-size:13px;font-weight:500;letter-spacing:0.04em;margin-bottom:2px;color:var(--text);}
+.ref-desc{font-size:11px;color:var(--gray);letter-spacing:0.04em;}
+.ref-reward{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--text);text-align:right;}
+.progress-box{margin-top:28px;padding:20px;background:var(--off);border:1px solid var(--light);}
+.progress-lbl{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.2em;color:var(--gray);text-transform:uppercase;margin-bottom:12px;}
+.progress-bar-wrap{background:var(--light);height:3px;margin-bottom:9px;}
+.progress-bar-fill{height:100%;background:var(--text);width:0%;transition:width 1.2s ease;}
 .progress-markers{display:flex;justify-content:space-between;}
 .pm{font-family:'Space Mono',monospace;font-size:9px;color:rgba(255,255,255,0.28);letter-spacing:0.1em;}
 
