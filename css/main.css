@@ -2,28 +2,11 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
 :root{
-  --black:#0d0d0d;
-  --white:#f5f4f1;
-  --off:#1a1a1a;
-  --light:#2a2a2a;
-  --gray:#8a8a8a;
+  --black:#0d0d0d;--white:#ffffff;--off:#f5f4f1;
+  --gray:#8a8a8a;--light:#e8e6e0;
   --green:#25a244;--red:#c0392b;
-  --surface:#0d0d0d;--text:#f5f4f1;--accent:#d4a84b;
 }
-@media(prefers-color-scheme:light){
-  .booking-popup-sheet{background:#ffffff;color:#0d0d0d;}
-  .booking-popup-close{background:#ffffff!important;color:#0d0d0d!important;border-color:#e8e6e0;}
-  .booking-popup-inner .form-input,.booking-popup-inner .form-select{background:#f5f4f1!important;color:#0d0d0d!important;border-color:#e8e6e0!important;}
-  .booking-popup-inner .form-label,.booking-popup-inner .section-title,.booking-popup-inner .section-sub{color:#0d0d0d!important;}
-  .booking-popup-inner .time-slot{background:#f5f4f1!important;color:#0d0d0d!important;border-color:#e8e6e0!important;}
-  .booking-popup-inner .time-slot.selected{background:#0d0d0d!important;color:#fff!important;}
-  .booking-popup-inner .pay-option{background:#f5f4f1!important;color:#0d0d0d!important;border-color:#e8e6e0!important;}
-  .booking-popup-inner .pay-option.selected{background:#d4a84b!important;color:#000!important;}
-  .booking-popup-inner .cal-day{color:#0d0d0d!important;}
-  .booking-popup-inner .cal-day.selected{background:#0d0d0d!important;color:#fff!important;}
-  .booking-popup-inner .grp-btn{background:#f5f4f1!important;color:#0d0d0d!important;}
-  .booking-popup-inner .grp-btn.selected{background:#0d0d0d!important;color:#fff!important;}
-}
+
 body{background:var(--black);color:var(--white);font-family:'DM Sans',sans-serif;font-weight:300;overflow-x:hidden;}
 
 /* NAV */
@@ -903,15 +886,15 @@ nav.scrolled .nav-signin-btn.admin-active{
 #bookingPopupModal.open{display:block;}
 .booking-popup-sheet{
   position:fixed;top:0;left:0;right:0;bottom:0;
-  background:var(--surface);color:var(--text);
+  background:var(--black);color:var(--white);
   z-index:900;overflow-y:auto;display:flex;flex-direction:column;
 }
 .booking-popup-close{
   position:sticky;top:0;z-index:10;
-  background:var(--surface);border:none;color:var(--text);
+  background:var(--black);border:none;color:var(--white);
   font-size:22px;cursor:pointer;padding:16px 20px;
   display:flex;align-items:center;gap:10px;
-  border-bottom:1px solid var(--light);
+  border-bottom:1px solid var(--off);
 }
 .booking-popup-close::after{
   content:'Book Appointment';
@@ -919,9 +902,9 @@ nav.scrolled .nav-signin-btn.admin-active{
   letter-spacing:.1em;text-transform:uppercase;color:var(--gray);
 }
 .booking-popup-inner{padding:0;}
-.booking-popup-inner .section{padding-top:16px!important;padding-bottom:40px!important;}
+
 .booking-popup-inner .section-label{display:none;}
-.booking-popup-inner .section-title{font-size:clamp(24px,6vw,36px)!important;}
+
 /* Ensure all form elements inherit popup theme */
 .booking-popup-inner .form-input,
 .booking-popup-inner .form-select{
@@ -931,37 +914,18 @@ nav.scrolled .nav-signin-btn.admin-active{
 .booking-popup-inner .form-input::placeholder{color:var(--gray);}
 .booking-popup-inner .form-label{color:var(--text);}
 .booking-popup-inner .pay-option{border-color:var(--light);color:var(--text);}
-.booking-popup-inner .pay-option{color:var(--text) !important;}
-.booking-popup-inner .pay-option .pay-icon svg, .booking-popup-inner .pay-option .pay-icon svg path{fill:currentColor !important;color:var(--text) !important;}
+
+
 .booking-popup-inner .pay-option.selected{border-color:var(--accent);background:var(--accent);color:#000;}
-.booking-popup-inner .pay-option.selected svg{fill:#000 !important;}
-.booking-popup-inner .time-slot{
-  background:var(--off) !important;
-  color:var(--text) !important;
-  border:1px solid var(--light) !important;
-}
-.booking-popup-inner .time-slot.selected{
-  background:var(--accent) !important;
-  color:#000 !important;
-  border-color:var(--accent) !important;
-  font-weight:700;
-}
-.booking-popup-inner .time-slot.blocked{
-  opacity:.25 !important;
-  cursor:not-allowed !important;
-}
-.booking-popup-inner .cal-day{color:var(--text) !important;}
-.booking-popup-inner .cal-day.selected{
-  background:var(--accent) !important;
-  color:#000 !important;
-  border-radius:4px;
-}
-.booking-popup-inner .cal-day.today{
-  border-color:var(--accent) !important;
-  color:var(--accent) !important;
-}
-.booking-popup-inner .cal-month{color:var(--text) !important;}
-.booking-popup-inner .cal-nav{color:var(--text) !important;background:var(--off) !important;}
+
+
+
+
+
+
+
+
+
 .booking-popup-inner .section-sub,
 .booking-popup-inner .section-label{color:var(--gray);}
 
@@ -1048,3 +1012,23 @@ nav.scrolled .nav-signin-btn.admin-active{
   .pay-option { color: #f5f4f1 !important; }
   .pay-option.selected { color: #000 !important; }
 }
+
+/* Booking popup follows active palette */
+.booking-popup-inner .form-input,
+.booking-popup-inner .form-select{background:var(--off);color:var(--white);border-color:var(--light);}
+.booking-popup-inner .form-label,.booking-popup-inner .section-title,
+.booking-popup-inner .section-sub,.booking-popup-inner .section-label{color:var(--white);}
+.booking-popup-inner .time-slot{background:var(--off);color:var(--white);border:1px solid var(--light);}
+.booking-popup-inner .time-slot.selected{background:var(--white);color:var(--black);}
+.booking-popup-inner .time-slot.blocked{opacity:.25;}
+.booking-popup-inner .pay-option{background:var(--off);color:var(--white);border-color:var(--light);}
+.booking-popup-inner .pay-option.selected{background:var(--white);color:var(--black);border-color:var(--white);}
+.booking-popup-inner .cal-day{color:var(--white);}
+.booking-popup-inner .cal-day.today{border-color:var(--accent,#d4a84b);}
+.booking-popup-inner .cal-day.selected{background:var(--white);color:var(--black);}
+.booking-popup-inner .cal-month,.booking-popup-inner .cal-nav{color:var(--white);}
+.booking-popup-inner .cal-nav{background:var(--off);}
+.booking-popup-inner .grp-btn{background:var(--off);color:var(--white);border-color:var(--light);}
+.booking-popup-inner .grp-btn.selected{background:var(--white);color:var(--black);}
+.booking-popup-inner .price-preview{background:var(--off);color:var(--white);}
+.booking-popup-inner .pay-icon{color:var(--white);}
