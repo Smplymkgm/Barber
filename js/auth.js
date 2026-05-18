@@ -45,11 +45,30 @@ function showAuth(mode){
 }
 let _loginPending = false;
 async function doSignIn() {
+  if(_loginPending) return;
   const u = (document.getElementById('aiEmail')?.value || '').trim();
   const p = (document.getElementById('aiPass')?.value || '').trim();
   if (!u || !p) { showToast('Enter username and password'); return; }
-  const btn = document.querySelector('#authContent .auth-btn');
-  if (btn) btn.disabled = true;
+
+  // Find the sign in button — it's the primary modal-btn
+  const btn = document.querySelector('#authContent .modal-btn.primary');
+  const originalText = btn ? btn.textContent : '';
+
+  function setLoading(on){
+    _loginPending = on;
+    if(!btn) return;
+    if(on){
+      btn.disabled = true;
+      btn.innerHTML = '<span class="btn-text">SIGN IN →</span>';
+      btn.classList.add('btn-loading');
+    } else {
+      btn.disabled = false;
+      btn.textContent = originalText;
+      btn.classList.remove('btn-loading');
+    }
+  }
+
+  setLoading(true);
   try {
     if (u === 'admin') {
       const res = await fetch('/.netlify/functions/auth', {
@@ -63,20 +82,25 @@ async function doSignIn() {
         closeModal('authModal');
         openAdminApp();
         if (typeof buildAdminPanel === 'function') buildAdminPanel();
-      } else { showToast(data.error || 'Invalid password'); }
+      } else {
+        showToast(data.error || 'Invalid password');
+        setLoading(false);
+      }
       return;
     }
     const field = u.includes('@') ? 'email' : 'username';
     const res = await fetch('/.netlify/functions/users?' + field + '=' + encodeURIComponent(u));
     const data = await res.json();
-    if (!res.ok || !data.id) { showToast('User not found'); return; }
-    if (data.password && data.password !== p) { showToast('Incorrect password'); return; }
+    if (!res.ok || !data.id) { showToast('User not found'); setLoading(false); return; }
+    if (data.password && data.password !== p) { showToast('Incorrect password'); setLoading(false); return; }
     localStorage.setItem('currentUser', JSON.stringify(data));
     closeModal('authModal');
     showToast('Welcome back, ' + (data.firstName || u));
     if (typeof updateNavForUser === 'function') updateNavForUser(data);
-  } catch(e) { showToast('Login error: ' + e.message); }
-  finally { if (btn) btn.disabled = false; }
+  } catch(e) {
+    showToast('Login error: ' + e.message);
+    setLoading(false);
+  }
 }
 async function doRegister(){
   const fn=document.getElementById('rnFirst').value.trim();

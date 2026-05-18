@@ -228,6 +228,12 @@ function initFromDB(){
     setTimeout(()=>{if(!currentUser?.isAdmin)showPromoPopup();},2000);
     applyContentSettings();
     console.log('DB initialized: ' + allBookings.length + ' bookings loaded');
+    // Hide page loader
+    const loader = document.getElementById('pageLoader');
+    if(loader){
+      loader.classList.add('hidden');
+      setTimeout(()=>loader.classList.add('gone'), 450);
+    }
   } catch(e){
     console.log('DB init failed, using localStorage cache:', e.message);
     if(!allBookings.length) allBookings = DB.get('bookings', []);

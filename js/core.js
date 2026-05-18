@@ -780,6 +780,11 @@ async function adminDeleteClient(email){
   buildClientsPage(document.getElementById('adminAppBody'));
 }
 
+function showAdminLoader(){
+  const body = document.getElementById('adminAppBody');
+  if(!body) return;
+  body.innerHTML = '<div class="admin-loading"><div class="admin-loading-ring"></div><div class="admin-loading-text">Loading...</div></div>';
+}
 function renderAdminPage(page){
   const body = document.getElementById('adminAppBody');
   switch(page){
