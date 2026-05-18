@@ -259,138 +259,174 @@ async function initFromDB(){
 }
 
 
+
 // ═══════════════════════════════════════
 // REELS / INSTAGRAM GRID
 // ═══════════════════════════════════════
-var DEFAULT_REELS = {
-  handle: 'michailgonzalez',
-  count: 6,
-  urls: ['','','','','','','','','']
-};
-
+var DEFAULT_REELS = { handle:'michailgonzalez', count:6, layout:'grid', urls:['','','','','','','','',''] };
 function getReelsConfig(){ return DB.get('reelsConfig', DEFAULT_REELS); }
-function saveReelsConfig(cfg){ DB.set('reelsConfig', cfg); API.saveSetting('reels_config', JSON.stringify(cfg)).catch(console.error); }
+function saveReelsConfig(cfg){ DB.set('reelsConfig',cfg); API.saveSetting('reels_config',JSON.stringify(cfg)).catch(console.error); }
 
 function getReelEmbedUrl(url){
   if(!url) return '';
-  // Instagram reel: https://www.instagram.com/reel/XXXXX/
   var igReel = url.match(/instagram\.com\/reel\/([A-Za-z0-9_-]+)/);
-  if(igReel) return 'https://www.instagram.com/reel/'+igReel[1]+'/embed/';
-  // Instagram post
+  if(igReel) return 'https://www.instagram.com/reel/'+igReel[1]+'/embed/?cr=1&v=14&wp=540';
   var igPost = url.match(/instagram\.com\/p\/([A-Za-z0-9_-]+)/);
   if(igPost) return 'https://www.instagram.com/p/'+igPost[1]+'/embed/';
-  // YouTube short or video
   var yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:shorts\/|watch\?v=))([A-Za-z0-9_-]{11})/);
   if(yt) return 'https://www.youtube.com/embed/'+yt[1]+'?autoplay=1&mute=1&loop=1&playlist='+yt[1]+'&controls=0';
-  // TikTok
-  var tt = url.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/);
+  var tt = url.match(/tiktok\.com\/@[^\/]+\/video\/(\d+)/);
   if(tt) return 'https://www.tiktok.com/embed/v2/'+tt[1];
-  // Direct mp4
   if(url.match(/\.(mp4|webm|mov)(\?|$)/i)) return url;
   return '';
 }
 
 function renderReelsGrid(){
   var wrap = document.getElementById('reelsGridWrap');
+  var section = document.getElementById('instaGrid');
   if(!wrap) return;
   var cfg = getReelsConfig();
-  var count = Math.min(Math.max(cfg.count||6, 3), 9);
-  // Force 3-col grid based on count
-  wrap.style.gridTemplateColumns = 'repeat(3,1fr)';
-
+  var count = Math.min(Math.max(cfg.count||6,3),9);
+  var layout = cfg.layout || 'grid';
+  var urls = (cfg.urls||[]).filter(function(u){ return u && getReelEmbedUrl(u); });
+  
   // Update follow link
   var link = document.getElementById('instaProfileLink');
   if(link && cfg.handle){
-    link.href = 'https://www.instagram.com/'+cfg.handle.replace('@','');
-    link.querySelector('span') ? link.querySelector('span').textContent = '@'+cfg.handle.replace('@','') : (link.lastChild.textContent = '@'+cfg.handle.replace('@',''));
+    var handle = cfg.handle.replace('@','');
+    link.href = 'https://www.instagram.com/'+handle;
+    var span = link.querySelector('.insta-handle');
+    if(span) span.textContent = '@'+handle;
   }
-
-  var cells = '';
-  for(var i=0; i<count; i++){
-    var url = (cfg.urls||[])[i]||'';
-    var embed = getReelEmbedUrl(url);
-    if(embed){
-      if(embed.match(/\.(mp4|webm|mov)(\?|$)/i)){
-        cells += '<div class="reel-cell"><video src="'+embed+'" autoplay muted loop playsinline></video></div>';
-      } else {
-        cells += '<div class="reel-cell"><iframe src="'+embed+'" frameborder="0" allowfullscreen allow="autoplay; fullscreen" loading="lazy" scrolling="no"></iframe></div>';
-      }
-    } else {
-      cells += '<div class="reel-cell empty">+'+(i+1)+'<br>add reel</div>';
-    }
+  
+  // Hide section if no urls
+  if(!urls.length){
+    if(section) section.style.display = 'none';
+    wrap.innerHTML = '';
+    return;
   }
-  wrap.innerHTML = cells;
+  if(section) section.style.display = '';
+  
+  var items = urls.slice(0, count);
+  
+  if(layout === 'slider'){
+    // Horizontal scroll slider
+    wrap.style.cssText = 'display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:8px;';
+    wrap.innerHTML = items.map(function(url){
+      var embed = getReelEmbedUrl(url);
+      return '<div style="flex:0 0 calc(33.333% - 6px);min-width:140px;aspect-ratio:9/16;background:#111;border-radius:8px;overflow:hidden;scroll-snap-align:start;">'
+        + '<iframe src="'+embed+'" frameborder="0" allowfullscreen allow="autoplay;fullscreen" loading="lazy" scrolling="no" style="width:100%;height:100%;border:none;pointer-events:none;"></iframe>'
+        + '</div>';
+    }).join('');
+  } else if(layout === 'stack'){
+    // Vertical stack
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:16px;max-width:480px;margin:0 auto;';
+    wrap.innerHTML = items.map(function(url){
+      var embed = getReelEmbedUrl(url);
+      return '<div style="width:100%;aspect-ratio:9/16;background:#111;border-radius:8px;overflow:hidden;">'
+        + '<iframe src="'+embed+'" frameborder="0" allowfullscreen allow="autoplay;fullscreen" loading="lazy" scrolling="no" style="width:100%;height:100%;border:none;"></iframe>'
+        + '</div>';
+    }).join('');
+  } else {
+    // Default: 3-column grid
+    var cols = count === 3 ? 3 : 3;
+    wrap.style.cssText = 'display:grid;grid-template-columns:repeat('+cols+',1fr);gap:4px;width:100%;max-width:480px;margin:0 auto;';
+    wrap.innerHTML = items.map(function(url){
+      var embed = getReelEmbedUrl(url);
+      return '<div style="aspect-ratio:9/16;background:#111;border-radius:3px;overflow:hidden;">'
+        + '<iframe src="'+embed+'" frameborder="0" allowfullscreen allow="autoplay;fullscreen" loading="lazy" scrolling="no" style="width:100%;height:100%;border:none;pointer-events:none;"></iframe>'
+        + '</div>';
+    }).join('');
+  }
 }
 
 function buildReelsAdminPage(){
   var cfg = getReelsConfig();
-  var count = Math.min(Math.max(cfg.count||6, 3), 9);
+  var count = Math.min(Math.max(cfg.count||6,3),9);
+  var layout = cfg.layout || 'grid';
   var h = '<div class="admin-section-title">Instagram / Reels Grid</div>';
   h += '<div class="admin-card"><div class="admin-card-inner">';
-  h += '<div class="form-group"><label class="form-label">Handle de Instagram</label>';
-  h += '<input type="text" id="reelsHandle" class="form-input" placeholder="michailgonzalez" value="'+(cfg.handle||'')+'" style="max-width:200px"></div>';
-  h += '<div class="form-group"><label class="form-label">Número de videos (3, 6 o 9)</label>';
-  h += '<div style="display:flex;gap:10px">';
+  h += '<div class="form-group"><label class="form-label">Instagram Handle</label>';
+  h += '<input type="text" id="reelsHandle" class="form-input" placeholder="michailgonzalez" value="'+(cfg.handle||'')+'" style="max-width:220px;"></div>';
+  
+  h += '<div class="form-group"><label class="form-label">Número de videos</label>';
+  h += '<div style="display:flex;gap:8px;">';
   [3,6,9].forEach(function(n){
-    h += '<button class="act-btn'+(count===n?' selected':'')+'" style="'+(count===n?'background:var(--accent);color:#000;':'background:var(--off);')+'" onclick="setReelCount('+n+',this)">'+n+'</button>';
+    var sel = count===n;
+    h += '<button class="act-btn" id="reelCount'+n+'" onclick="setReelCount('+n+')" style="'+(sel?'background:var(--accent);color:#000;':'background:var(--off);')+' min-width:50px;">'+n+'</button>';
   });
   h += '</div></div>';
-  h += '<div class="form-group"><label class="form-label">URLs de Reels (pega el link de Instagram)</label>';
-  for(var i=0; i<9; i++){
-    h += '<div class="reel-editor-row" style="'+(i>=count?'opacity:0.3;':'')+'">';
-    h += '<span class="reel-editor-num">'+(i+1)+'</span>';
-    h += '<input type="text" id="reelUrl'+i+'" class="form-input" placeholder="https://www.instagram.com/reel/..." value="'+((cfg.urls||[])[i]||'')+'">';
-    if((cfg.urls||[])[i]) h += '<button onclick="clearReel('+i+')" style="background:none;border:none;color:var(--gray);cursor:pointer;font-size:16px;">✕</button>';
+
+  h += '<div class="form-group"><label class="form-label">Layout</label>';
+  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+  var layouts = [{v:'grid',l:'Grid 3×'},{v:'slider',l:'Slider →'},{v:'stack',l:'Stack ↓'}];
+  layouts.forEach(function(lt){
+    var sel = layout===lt.v;
+    var onclick = "setReelLayout('" + lt.v + "')";
+    h += '<button class="act-btn" id="reelLayout_'+lt.v+'" onclick="'+onclick+'" style="'+(sel?'background:var(--accent,#d4a84b);color:#000;':'background:var(--off);')+'">'+lt.l+'</button>';
+  });
+  h += '</div></div>';
+
+  h += '<div class="form-group"><label class="form-label">URLs de videos (Instagram Reels, YouTube Shorts, TikTok)</label>';
+  for(var i=0;i<9;i++){
+    var active = i < count;
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;opacity:'+(active?'1':'0.3')+'" id="reelRow'+i+'">';
+    h += '<span style="font-family:monospace;font-size:11px;color:var(--gray);min-width:16px;">'+(i+1)+'</span>';
+    h += '<input type="text" id="reelUrl'+i+'" class="form-input" placeholder="https://www.instagram.com/reel/..." value="'+((cfg.urls||[])[i]||'')+'" style="flex:1;">';
+    if((cfg.urls||[])[i]) h += '<button onclick="clearReel('+i+')" style="background:none;border:none;color:var(--gray);cursor:pointer;font-size:18px;padding:0 4px;">✕</button>';
     h += '</div>';
   }
   h += '</div>';
-  h += '<div style="display:flex;gap:10px">';
+
+  h += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
   h += '<button class="act-btn" onclick="saveReelsSettings()">GUARDAR</button>';
-  h += '<button class="act-btn" style="background:var(--gray)" onclick="previewReels()">PREVIEW</button>';
+  h += '<button class="act-btn" style="background:var(--off);" onclick="previewReels()">PREVIEW</button>';
   h += '</div></div></div>';
   return h;
 }
 
-function setReelCount(n, btn){
-  document.querySelectorAll('#adminAppBody .act-btn').forEach(function(b){
-    if(['3','6','9'].includes(b.textContent)){
-      b.style.background='var(--off)'; b.style.color='';
-    }
-  });
-  btn.style.background='var(--accent)'; btn.style.color='#000';
-  btn.setAttribute('data-count', n);
-  // Show/hide rows
-  for(var i=0; i<9; i++){
-    var row = document.querySelector('.reel-editor-row:nth-child('+(i+1)+')');
-    if(row) row.style.opacity = i<n ? '1' : '0.3';
-  }
+window._reelCount = 6;
+window._reelLayout = 'grid';
+
+function setReelCount(n){
   window._reelCount = n;
-}
-
-function clearReel(i){
-  var inp = document.getElementById('reelUrl'+i);
-  if(inp) inp.value = '';
-}
-
-function saveReelsSettings(){
-  var urls = [];
-  for(var i=0; i<9; i++){
-    var el = document.getElementById('reelUrl'+i);
-    urls.push(el ? el.value.trim() : '');
+  [3,6,9].forEach(function(x){
+    var b = document.getElementById('reelCount'+x);
+    if(b){ b.style.background = x===n?'var(--accent)':'var(--off)'; b.style.color = x===n?'#000':''; }
+  });
+  for(var i=0;i<9;i++){
+    var row = document.getElementById('reelRow'+i);
+    if(row) row.style.opacity = i<n?'1':'0.3';
   }
-  var handle = (document.getElementById('reelsHandle')||{}).value||'';
-  var count = window._reelCount || Math.min(Math.max(parseInt(document.querySelector('[data-count]')?.getAttribute('data-count')||'6'),3),9);
-  var cfg = {handle:handle, count:count, urls:urls};
+}
+function setReelLayout(v){
+  window._reelLayout = v;
+  ['grid','slider','stack'].forEach(function(x){
+    var b = document.getElementById('reelLayout_'+x);
+    if(b){ b.style.background = x===v?'var(--accent)':'var(--off)'; b.style.color = x===v?'#000':''; }
+  });
+}
+function clearReel(i){ var el = document.getElementById('reelUrl'+i); if(el) el.value=''; }
+function saveReelsSettings(){
+  var urls=[];
+  for(var i=0;i<9;i++){ var el=document.getElementById('reelUrl'+i); urls.push(el?el.value.trim():''); }
+  var handle=(document.getElementById('reelsHandle')||{}).value||'';
+  var count=window._reelCount||6;
+  var layout=window._reelLayout||'grid';
+  var cfg={handle:handle,count:count,layout:layout,urls:urls};
   saveReelsConfig(cfg);
   renderReelsGrid();
   showToast('Reels guardados ✓');
 }
-
 function previewReels(){
   saveReelsSettings();
-  var sec = document.getElementById('instaGrid');
-  if(sec) sec.scrollIntoView({behavior:'smooth'});
+  closeAdminApp();
+  setTimeout(function(){
+    var sec=document.getElementById('instaGrid');
+    if(sec) sec.scrollIntoView({behavior:'smooth'});
+  },300);
 }
+
 
 // Initialize app
 initFromDB();
